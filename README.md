@@ -11,6 +11,6 @@ See Blog : [Unity - RenderDoc 抓帧导出 FBX（带UV）](https://blog.csdn.net
 
 ---
 # Requirements
-Unity : 2020.3.18f1
-RenderPipeline : URP
-Unity Package : FBX Exporter 4.1.2
+- Unity : 2020.3.18f1
+- RenderPipeline : URP
+- Unity Package : FBX Exporter 4.1.2
