@@ -1030,6 +1030,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         // jave.lin : 缩放、旋转、平移
         var rotation    = Quaternion.Euler(vertexRotation);
         var TRS_mat     = Matrix4x4.TRS(vertexOffset, rotation, vertexScale);
+        // jave.lin : 法线变换矩阵需要特殊处理，针对 vertex scale 为非 uniform scale 的情况
+        // ref : LearnGL - 11.5 - 矩阵04 - 法线从对象空间变换到世界空间
+        // https://blog.csdn.net/linjf520/article/details/107501215
+        var M_IT_mat    = Matrix4x4.TRS(Vector3.zero, rotation, vertexScale).inverse.transpose;
 
         // jave.lin : composite the data （最后就是我们要组合数据，同意赋值给 mesh）
         var vertices    = new Vector3[vertex_dict_key_idx.Count];
@@ -1050,7 +1054,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         {
             var info        = vertex_dict_key_idx[idx];
             vertices[idx]   = TRS_mat * info.POSITION_H;
-            normals[idx]    = rotation * info.NORMAL;
+            normals[idx]    = M_IT_mat * info.NORMAL;
             tangents[idx]   = info.TANGENT;
             uv[idx]         = info.TEXCOORD0;
             uv2[idx]        = info.TEXCOORD1;
