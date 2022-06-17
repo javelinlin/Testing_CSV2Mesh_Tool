@@ -427,6 +427,11 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             return;
         }
 
+        if (refresh_csv)
+        {
+            material = null;
+        }
+
         // jave.lin : FBX 模型名字
         fbxName = EditorGUILayout.TextField("FBX Name", fbxName);
         if (RDC_Text_Asset != null && (refresh_csv || string.IsNullOrEmpty(fbxName)))
@@ -660,55 +665,62 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         {
             semanticTypeDict_key_name_helper.Clear();
         }
-        semanticTypeDict_key_name_helper["VTX"]            = SemanticType.VTX;
-        semanticTypeDict_key_name_helper["IDX"]            = SemanticType.IDX;
-        semanticTypeDict_key_name_helper["POSITION.x"]     = SemanticType.POSITION_X;
-        semanticTypeDict_key_name_helper["POSITION.y"]     = SemanticType.POSITION_Y;
-        semanticTypeDict_key_name_helper["POSITION.z"]     = SemanticType.POSITION_Z;
-        semanticTypeDict_key_name_helper["NORMAL.x"]       = SemanticType.NORMAL_X;
-        semanticTypeDict_key_name_helper["NORMAL.y"]       = SemanticType.NORMAL_Y;
-        semanticTypeDict_key_name_helper["NORMAL.z"]       = SemanticType.NORMAL_Z;
-        semanticTypeDict_key_name_helper["NORMAL.w"]       = SemanticType.NORMAL_W;
-        semanticTypeDict_key_name_helper["TANGENT.x"]      = SemanticType.TANGENT_X;
-        semanticTypeDict_key_name_helper["TANGENT.y"]      = SemanticType.TANGENT_Y;
-        semanticTypeDict_key_name_helper["TANGENT.z"]      = SemanticType.TANGENT_Z;
-        semanticTypeDict_key_name_helper["TANGENT.w"]      = SemanticType.TANGENT_W;
-        semanticTypeDict_key_name_helper["TEXCOORD0.x"]    = SemanticType.TEXCOORD0_X;
-        semanticTypeDict_key_name_helper["TEXCOORD0.y"]    = SemanticType.TEXCOORD0_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD0.z"]    = SemanticType.TEXCOORD0_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD0.w"]    = SemanticType.TEXCOORD0_W;
-        semanticTypeDict_key_name_helper["TEXCOORD1.x"]    = SemanticType.TEXCOORD1_X;
-        semanticTypeDict_key_name_helper["TEXCOORD1.y"]    = SemanticType.TEXCOORD1_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD1.z"]    = SemanticType.TEXCOORD1_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD1.w"]    = SemanticType.TEXCOORD1_W;
-        semanticTypeDict_key_name_helper["TEXCOORD2.x"]    = SemanticType.TEXCOORD2_X;
-        semanticTypeDict_key_name_helper["TEXCOORD2.y"]    = SemanticType.TEXCOORD2_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD2.z"]    = SemanticType.TEXCOORD2_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD2.w"]    = SemanticType.TEXCOORD2_W;
-        semanticTypeDict_key_name_helper["TEXCOORD3.x"]    = SemanticType.TEXCOORD3_X;
-        semanticTypeDict_key_name_helper["TEXCOORD3.y"]    = SemanticType.TEXCOORD3_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD3.z"]    = SemanticType.TEXCOORD3_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD3.w"]    = SemanticType.TEXCOORD3_W;
-        semanticTypeDict_key_name_helper["TEXCOORD4.x"]    = SemanticType.TEXCOORD4_X;
-        semanticTypeDict_key_name_helper["TEXCOORD4.y"]    = SemanticType.TEXCOORD4_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD4.z"]    = SemanticType.TEXCOORD4_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD4.w"]    = SemanticType.TEXCOORD4_W;
-        semanticTypeDict_key_name_helper["TEXCOORD5.x"]    = SemanticType.TEXCOORD5_X;
-        semanticTypeDict_key_name_helper["TEXCOORD5.y"]    = SemanticType.TEXCOORD5_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD5.z"]    = SemanticType.TEXCOORD5_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD5.w"]    = SemanticType.TEXCOORD5_W;
-        semanticTypeDict_key_name_helper["TEXCOORD6.x"]    = SemanticType.TEXCOORD6_X;
-        semanticTypeDict_key_name_helper["TEXCOORD6.y"]    = SemanticType.TEXCOORD6_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD6.z"]    = SemanticType.TEXCOORD6_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD6.w"]    = SemanticType.TEXCOORD6_W;
-        semanticTypeDict_key_name_helper["TEXCOORD7.x"]    = SemanticType.TEXCOORD7_X;
-        semanticTypeDict_key_name_helper["TEXCOORD7.y"]    = SemanticType.TEXCOORD7_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD7.z"]    = SemanticType.TEXCOORD7_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD7.w"]    = SemanticType.TEXCOORD7_W;
-        semanticTypeDict_key_name_helper["COLOR0.x"]       = SemanticType.COLOR0_X;
-        semanticTypeDict_key_name_helper["COLOR0.y"]       = SemanticType.COLOR0_Y;
-        semanticTypeDict_key_name_helper["COLOR0.z"]       = SemanticType.COLOR0_Z;
-        semanticTypeDict_key_name_helper["COLOR0.w"]       = SemanticType.COLOR0_W;
+        semanticTypeDict_key_name_helper["VTX"]             = SemanticType.VTX;
+        semanticTypeDict_key_name_helper["IDX"]             = SemanticType.IDX;
+        //semanticTypeDict_key_name_helper["SV_POSITION.x"] = SemanticType.POSITION_X;
+        //semanticTypeDict_key_name_helper["SV_POSITION.y"] = SemanticType.POSITION_Y;
+        //semanticTypeDict_key_name_helper["SV_POSITION.z"] = SemanticType.POSITION_Z;
+        semanticTypeDict_key_name_helper["POSITION.x"]      = SemanticType.POSITION_X;
+        semanticTypeDict_key_name_helper["POSITION.y"]      = SemanticType.POSITION_Y;
+        semanticTypeDict_key_name_helper["POSITION.z"]      = SemanticType.POSITION_Z;
+        semanticTypeDict_key_name_helper["NORMAL.x"]        = SemanticType.NORMAL_X;
+        semanticTypeDict_key_name_helper["NORMAL.y"]        = SemanticType.NORMAL_Y;
+        semanticTypeDict_key_name_helper["NORMAL.z"]        = SemanticType.NORMAL_Z;
+        semanticTypeDict_key_name_helper["NORMAL.w"]        = SemanticType.NORMAL_W;
+        semanticTypeDict_key_name_helper["TANGENT.x"]       = SemanticType.TANGENT_X;
+        semanticTypeDict_key_name_helper["TANGENT.y"]       = SemanticType.TANGENT_Y;
+        semanticTypeDict_key_name_helper["TANGENT.z"]       = SemanticType.TANGENT_Z;
+        semanticTypeDict_key_name_helper["TANGENT.w"]       = SemanticType.TANGENT_W;
+        semanticTypeDict_key_name_helper["TEXCOORD0.x"]     = SemanticType.TEXCOORD0_X;
+        semanticTypeDict_key_name_helper["TEXCOORD0.y"]     = SemanticType.TEXCOORD0_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD0.z"]     = SemanticType.TEXCOORD0_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD0.w"]     = SemanticType.TEXCOORD0_W;
+        semanticTypeDict_key_name_helper["TEXCOORD1.x"]     = SemanticType.TEXCOORD1_X;
+        semanticTypeDict_key_name_helper["TEXCOORD1.y"]     = SemanticType.TEXCOORD1_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD1.z"]     = SemanticType.TEXCOORD1_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD1.w"]     = SemanticType.TEXCOORD1_W;
+        semanticTypeDict_key_name_helper["TEXCOORD2.x"]     = SemanticType.TEXCOORD2_X;
+        semanticTypeDict_key_name_helper["TEXCOORD2.y"]     = SemanticType.TEXCOORD2_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD2.z"]     = SemanticType.TEXCOORD2_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD2.w"]     = SemanticType.TEXCOORD2_W;
+        semanticTypeDict_key_name_helper["TEXCOORD3.x"]     = SemanticType.TEXCOORD3_X;
+        semanticTypeDict_key_name_helper["TEXCOORD3.y"]     = SemanticType.TEXCOORD3_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD3.z"]     = SemanticType.TEXCOORD3_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD3.w"]     = SemanticType.TEXCOORD3_W;
+        semanticTypeDict_key_name_helper["TEXCOORD4.x"]     = SemanticType.TEXCOORD4_X;
+        semanticTypeDict_key_name_helper["TEXCOORD4.y"]     = SemanticType.TEXCOORD4_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD4.z"]     = SemanticType.TEXCOORD4_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD4.w"]     = SemanticType.TEXCOORD4_W;
+        semanticTypeDict_key_name_helper["TEXCOORD5.x"]     = SemanticType.TEXCOORD5_X;
+        semanticTypeDict_key_name_helper["TEXCOORD5.y"]     = SemanticType.TEXCOORD5_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD5.z"]     = SemanticType.TEXCOORD5_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD5.w"]     = SemanticType.TEXCOORD5_W;
+        semanticTypeDict_key_name_helper["TEXCOORD6.x"]     = SemanticType.TEXCOORD6_X;
+        semanticTypeDict_key_name_helper["TEXCOORD6.y"]     = SemanticType.TEXCOORD6_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD6.z"]     = SemanticType.TEXCOORD6_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD6.w"]     = SemanticType.TEXCOORD6_W;
+        semanticTypeDict_key_name_helper["TEXCOORD7.x"]     = SemanticType.TEXCOORD7_X;
+        semanticTypeDict_key_name_helper["TEXCOORD7.y"]     = SemanticType.TEXCOORD7_Y;
+        semanticTypeDict_key_name_helper["TEXCOORD7.z"]     = SemanticType.TEXCOORD7_Z;
+        semanticTypeDict_key_name_helper["TEXCOORD7.w"]     = SemanticType.TEXCOORD7_W;
+        semanticTypeDict_key_name_helper["COLOR0.x"]        = SemanticType.COLOR0_X;
+        semanticTypeDict_key_name_helper["COLOR0.y"]        = SemanticType.COLOR0_Y;
+        semanticTypeDict_key_name_helper["COLOR0.z"]        = SemanticType.COLOR0_Z;
+        semanticTypeDict_key_name_helper["COLOR0.w"]        = SemanticType.COLOR0_W;
+        semanticTypeDict_key_name_helper["COLOR.x"]         = SemanticType.COLOR0_X;
+        semanticTypeDict_key_name_helper["COLOR.y"]         = SemanticType.COLOR0_Y;
+        semanticTypeDict_key_name_helper["COLOR.z"]         = SemanticType.COLOR0_Z;
+        semanticTypeDict_key_name_helper["COLOR.w"]         = SemanticType.COLOR0_W;
     }
 
     // jave.lin : 获取 parent transform 对象
