@@ -37,6 +37,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         POSITION_X,
         POSITION_Y,
         POSITION_Z,
+        POSITION_W,
 
         NORMAL_X,
         NORMAL_Y,
@@ -110,6 +111,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         public float POSITION_X;
         public float POSITION_Y;
         public float POSITION_Z;
+        public float POSITION_W;
 
         public float NORMAL_X;
         public float NORMAL_Y;
@@ -667,12 +669,14 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
         semanticTypeDict_key_name_helper["VTX"]             = SemanticType.VTX;
         semanticTypeDict_key_name_helper["IDX"]             = SemanticType.IDX;
-        //semanticTypeDict_key_name_helper["SV_POSITION.x"] = SemanticType.POSITION_X;
-        //semanticTypeDict_key_name_helper["SV_POSITION.y"] = SemanticType.POSITION_Y;
-        //semanticTypeDict_key_name_helper["SV_POSITION.z"] = SemanticType.POSITION_Z;
+        semanticTypeDict_key_name_helper["SV_POSITION.x"] = SemanticType.POSITION_X;
+        semanticTypeDict_key_name_helper["SV_POSITION.y"] = SemanticType.POSITION_Y;
+        semanticTypeDict_key_name_helper["SV_POSITION.z"] = SemanticType.POSITION_Z;
+        semanticTypeDict_key_name_helper["SV_POSITION.w"] = SemanticType.POSITION_W;
         semanticTypeDict_key_name_helper["POSITION.x"]      = SemanticType.POSITION_X;
         semanticTypeDict_key_name_helper["POSITION.y"]      = SemanticType.POSITION_Y;
         semanticTypeDict_key_name_helper["POSITION.z"]      = SemanticType.POSITION_Z;
+        semanticTypeDict_key_name_helper["POSITION.w"]      = SemanticType.POSITION_W;
         semanticTypeDict_key_name_helper["NORMAL.x"]        = SemanticType.NORMAL_X;
         semanticTypeDict_key_name_helper["NORMAL.y"]        = SemanticType.NORMAL_Y;
         semanticTypeDict_key_name_helper["NORMAL.z"]        = SemanticType.NORMAL_Z;
@@ -794,6 +798,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 break;
             case SemanticType.POSITION_Z:
                 info.POSITION_Z = float.Parse(data);
+                break;
+            case SemanticType.POSITION_W:
+                info.POSITION_W = float.Parse(data);
+                Debug.LogWarning("WARNING: unity mesh cannot transfer position.w to shader program.");
                 break;
 
             // jave.lin : normal
@@ -1035,7 +1043,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         // https://blog.csdn.net/linjf520/article/details/107501215
         var M_IT_mat    = Matrix4x4.TRS(Vector3.zero, rotation, vertexScale).inverse.transpose;
 
-        // jave.lin : composite the data （最后就是我们要组合数据，同意赋值给 mesh）
+        // jave.lin : composite the data （最后就是我们要组合数据，统一赋值给 mesh）
         var vertices    = new Vector3[vertex_dict_key_idx.Count];
         var normals     = new Vector3[vertex_dict_key_idx.Count];
         var tangents    = new Vector4[vertex_dict_key_idx.Count];
@@ -1070,6 +1078,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         // jave.lin : 设置 mesh 信息
         mesh.vertices   = vertices;
         mesh.triangles  = indices.ToArray();
+
+        // jave.lin : unity 不能超过 uv[0~7]
         mesh.uv         = has_uv0 ? uv : null;
         mesh.uv2        = has_uv1 ? uv2 : null;
         mesh.uv3        = has_uv2 ? uv3 : null;
@@ -1078,6 +1088,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         mesh.uv6        = has_uv5 ? uv6 : null;
         mesh.uv7        = has_uv6 ? uv7 : null;
         mesh.uv8        = has_uv7 ? uv8 : null;
+        
         mesh.colors     = has_color0 ? color0 : null;
 
         // jave.lin : AABB
