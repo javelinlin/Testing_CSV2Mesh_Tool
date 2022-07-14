@@ -348,7 +348,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     private Vector3 vertexOffset = Vector3.zero;
     private Vector3 vertexRotation = Vector3.zero;
     private Vector3 vertexScale = Vector3.one;
-    private bool is_revert_vertex_order = true; // jave.lin : for revert normal
+    private bool is_reverse_vertex_order = true; // jave.lin : for reverse normal
     private bool is_recalculate_bound = true;
     private SemanticMappingType semanticMappingType = SemanticMappingType.Default;
     private bool has_uv0 = true;
@@ -527,7 +527,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             // jave.lin : 是否从 dx 的 Graphics API 导出而来的 CSV
             is_from_DX_CSV = EditorGUILayout.Toggle("Is From DirectX CSV", is_from_DX_CSV);
             // jave.lin : 是否反转法线 : 通过反转 indices 的顺序即可达到效果
-            is_revert_vertex_order = EditorGUILayout.Toggle("Is Revert Normal", is_revert_vertex_order);
+            is_reverse_vertex_order = EditorGUILayout.Toggle("Is Reverse Normal", is_reverse_vertex_order);
             // jave.lin : 是否重新计算 AABB
             is_recalculate_bound = EditorGUILayout.Toggle("Is Recalculate AABB", is_recalculate_bound);
             // jave.lin : 顶点平移
@@ -1275,8 +1275,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         // jave.lin : 设置 mesh 信息
         mesh.vertices   = vertices;
 
-        // jave.lin : 是否 revert idx
-        if (is_revert_vertex_order) indices.Reverse();
+        // jave.lin : 是否 reverse idx
+        if (is_reverse_vertex_order) indices.Reverse();
         mesh.triangles = indices.ToArray();
 
         // jave.lin : unity 不能超过 uv[0~7]
