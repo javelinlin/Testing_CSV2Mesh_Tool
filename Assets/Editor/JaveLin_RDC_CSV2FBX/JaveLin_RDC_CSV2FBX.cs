@@ -351,15 +351,15 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     private bool is_reverse_vertex_order = true; // jave.lin : for reverse normal
     private bool is_recalculate_bound = true;
     private SemanticMappingType semanticMappingType = SemanticMappingType.Default;
-    private bool has_uv0 = true;
-    private bool has_uv1 = false;
-    private bool has_uv2 = false;
-    private bool has_uv3 = false;
-    private bool has_uv4 = false;
-    private bool has_uv5 = false;
-    private bool has_uv6 = false;
-    private bool has_uv7 = false;
-    private bool has_color0 = false;
+    private bool include_uv0 = true;
+    private bool include_uv1 = false;
+    private bool include_uv2 = false;
+    private bool include_uv3 = false;
+    private bool include_uv4 = false;
+    private bool include_uv5 = false;
+    private bool include_uv6 = false;
+    private bool include_uv7 = false;
+    private bool include_color0 = false;
     private ModelImporterNormals normalImportType = ModelImporterNormals.Import;
     private ModelImporterTangents tangentImportType = ModelImporterTangents.Import;
     private bool show_mat_toggle = true;
@@ -536,17 +536,17 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             vertexRotation = EditorGUILayout.Vector3Field("Vertex Rotation", vertexRotation);
             // jave.lin : 顶点缩放
             vertexScale = EditorGUILayout.Vector3Field("Vertex Scale", vertexScale);
-            // jave.lin : has_uv0,1,2,3,4,5,6,7
-            has_uv0 = EditorGUILayout.Toggle("Has UV0", has_uv0);
-            has_uv1 = EditorGUILayout.Toggle("Has UV1", has_uv1);
-            has_uv2 = EditorGUILayout.Toggle("Has UV2", has_uv2);
-            has_uv3 = EditorGUILayout.Toggle("Has UV3", has_uv3);
-            has_uv4 = EditorGUILayout.Toggle("Has UV4", has_uv4);
-            has_uv5 = EditorGUILayout.Toggle("Has UV5", has_uv5);
-            has_uv6 = EditorGUILayout.Toggle("Has UV6", has_uv6);
-            has_uv7 = EditorGUILayout.Toggle("Has UV7", has_uv7);
-            // jave.lin : has_color0
-            has_color0 = EditorGUILayout.Toggle("Has Color0", has_color0);
+            // jave.lin : include_uv0,1,2,3,4,5,6,7
+            include_uv0 = EditorGUILayout.Toggle("Includes UV0", include_uv0);
+            include_uv1 = EditorGUILayout.Toggle("Includes UV1", include_uv1);
+            include_uv2 = EditorGUILayout.Toggle("Includes UV2", include_uv2);
+            include_uv3 = EditorGUILayout.Toggle("Includes UV3", include_uv3);
+            include_uv4 = EditorGUILayout.Toggle("Includes UV4", include_uv4);
+            include_uv5 = EditorGUILayout.Toggle("Includes UV5", include_uv5);
+            include_uv6 = EditorGUILayout.Toggle("Includes UV6", include_uv6);
+            include_uv7 = EditorGUILayout.Toggle("Includes UV7", include_uv7);
+            // jave.lin : include_color0
+            include_color0 = EditorGUILayout.Toggle("Includes Color0", include_color0);
             // jave.lin : 法线导入方式
             normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
             // jave.lin : 切线导入方式
@@ -1290,16 +1290,16 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         mesh.triangles = indices.ToArray();
 
         // jave.lin : unity 不能超过 uv[0~7]
-        mesh.uv         = has_uv0 ? uv : null;
-        mesh.uv2        = has_uv1 ? uv2 : null;
-        mesh.uv3        = has_uv2 ? uv3 : null;
-        mesh.uv4        = has_uv3 ? uv4 : null;
-        mesh.uv5        = has_uv4 ? uv5 : null;
-        mesh.uv6        = has_uv5 ? uv6 : null;
-        mesh.uv7        = has_uv6 ? uv7 : null;
-        mesh.uv8        = has_uv7 ? uv8 : null;
+        mesh.uv         = include_uv0 ? uv : null;
+        mesh.uv2        = include_uv1 ? uv2 : null;
+        mesh.uv3        = include_uv2 ? uv3 : null;
+        mesh.uv4        = include_uv3 ? uv4 : null;
+        mesh.uv5        = include_uv4 ? uv5 : null;
+        mesh.uv6        = include_uv5 ? uv6 : null;
+        mesh.uv7        = include_uv6 ? uv7 : null;
+        mesh.uv8        = include_uv7 ? uv8 : null;
         
-        mesh.colors     = has_color0 ? color0 : null;
+        mesh.colors     = include_color0 ? color0 : null;
 
         // jave.lin : AABB
         if (is_recalculate_bound)
