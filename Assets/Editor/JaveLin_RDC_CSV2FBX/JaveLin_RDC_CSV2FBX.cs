@@ -30,6 +30,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     // jave.lin : 语义的类型
     public enum SemanticType
     {
+        Unknow,
+
         VTX,
 
         IDX,
@@ -93,6 +95,13 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         COLOR0_Y,
         COLOR0_Z,
         COLOR0_W,
+    }
+
+    // jave.lin : Semantic 映射类型
+    public enum SemanticMappingType
+    {
+        Default,            // jave.lin : 使用默认的
+        ManuallyMapping,    // jave.lin : 使用手动设置映射的
     }
 
     // jave.lin : 材质设置的方式
@@ -339,7 +348,9 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     private Vector3 vertexOffset = Vector3.zero;
     private Vector3 vertexRotation = Vector3.zero;
     private Vector3 vertexScale = Vector3.one;
+    private bool is_revert_vertex_order = true; // jave.lin : for revert normal
     private bool is_recalculate_bound = true;
+    private SemanticMappingType semanticMappingType = SemanticMappingType.Default;
     private bool has_uv0 = true;
     private bool has_uv1 = false;
     private bool has_uv2 = false;
@@ -359,7 +370,41 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
     // jave.lin : helper 对象
     private Dictionary<string, SemanticType> semanticTypeDict_key_name_helper;
+    private Dictionary<string, SemanticType> semanticManullyMappingTypeDict_key_name_helper;
     private SemanticType[] semanticsIDX_helper;
+    private int[] semantics_check_duplicated_helper;
+    private List<string> stringListHelper;
+
+    private int[] GetSemantics_check_duplicated_helper()
+    {
+        if (semantics_check_duplicated_helper == null)
+        {
+            var vals = Enum.GetValues(typeof(SemanticType));
+            semantics_check_duplicated_helper = new int[vals.Length];
+            for (int i = 0; i < vals.Length; i++)
+            {
+                semantics_check_duplicated_helper[i] = 0;
+            }
+        }
+        return semantics_check_duplicated_helper;
+    }
+
+    private void ClearSemantics_check_duplicated_helper(int[] arr)
+    {
+        if (arr != null)
+        {
+            Array.Clear(arr, 0, arr.Length);
+        }
+    }
+
+    private List<string> GetStringListHelper()
+    {
+        if (stringListHelper == null)
+        {
+            stringListHelper = new List<string>();
+        }
+        return stringListHelper;
+    }
 
     // jave.lin : 删除指定目录+目录下的所有文件
     private void DelectDir(string dir)
@@ -432,6 +477,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         if (refresh_csv)
         {
             material = null;
+            semanticManullyMappingTypeDict_key_name_helper = null;
+            ClearSemantics_check_duplicated_helper(semantics_check_duplicated_helper);
         }
 
         // jave.lin : FBX 模型名字
@@ -479,6 +526,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             EditorGUI.indentLevel++;
             // jave.lin : 是否从 dx 的 Graphics API 导出而来的 CSV
             is_from_DX_CSV = EditorGUILayout.Toggle("Is From DirectX CSV", is_from_DX_CSV);
+            // jave.lin : 是否反转法线 : 通过反转 indices 的顺序即可达到效果
+            is_revert_vertex_order = EditorGUILayout.Toggle("Is Revert Normal", is_revert_vertex_order);
             // jave.lin : 是否重新计算 AABB
             is_recalculate_bound = EditorGUILayout.Toggle("Is Recalculate AABB", is_recalculate_bound);
             // jave.lin : 顶点平移
@@ -502,6 +551,87 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
             // jave.lin : 切线导入方式
             tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
+            // jave.lin : semantic 映射类型
+            semanticMappingType = (SemanticMappingType)EditorGUILayout.EnumPopup("Semantic Mapping Type", semanticMappingType);
+            if (semanticMappingType == SemanticMappingType.ManuallyMapping)
+            {
+                var refreshCSVSemanticTitle = false;
+                if (GUILayout.Button("Refresh Analysis CSV Semantic Title"))
+                {
+                    refreshCSVSemanticTitle = true;
+                }
+
+                if (semanticManullyMappingTypeDict_key_name_helper == null)
+                {
+                    refreshCSVSemanticTitle = true;
+                }
+
+                if (refreshCSVSemanticTitle)
+                {
+                    Analysis_CSV_SemanticTitle();
+                }
+
+                // jave.lin : semantic 的手动设置数据
+                var keys = semanticManullyMappingTypeDict_key_name_helper.Keys;
+                var stringList = GetStringListHelper();
+                stringList.Clear();
+                stringList.AddRange(keys);
+
+                // jave.lin : 根据名字排序一下
+                stringList.Sort();
+
+                var check_duplicated_helper = GetSemantics_check_duplicated_helper();
+                for (int i = 0; i < stringList.Count; i++)
+                {
+                    if (semanticManullyMappingTypeDict_key_name_helper.TryGetValue(stringList[i], out SemanticType mappedST))
+                    {
+                        var idx = (int)mappedST;
+                        check_duplicated_helper[idx]++;
+                    }
+                }
+
+                // jave.lin : 显示 semantic manually mapping data 的控件 的 title
+                EditorGUILayout.BeginHorizontal();
+                {
+                    var src_col = GUI.contentColor;
+                    GUI.contentColor = Color.yellow;
+                    EditorGUILayout.LabelField("CSV Seman Name", GUILayout.Width(120));
+                    EditorGUILayout.LabelField("Map To", GUILayout.Width(120));
+                    GUI.contentColor = src_col;
+                }
+                EditorGUILayout.EndHorizontal();
+
+                // jave.lin : 显示 semantic manually mapping data 的控件
+                for (int i = 0; i < stringList.Count; i++)
+                {
+                    var semantic_name = stringList[i];
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(semantic_name, GUILayout.Width(120));
+                    
+                    if (!semanticManullyMappingTypeDict_key_name_helper.TryGetValue(semantic_name, out SemanticType mappedST))
+                    {
+                        Debug.LogError($"un mapped semantic name : {semantic_name}");
+                        continue;
+                    }
+
+                    // jave.lin : 控件显示，修改
+                    mappedST = (SemanticType)EditorGUILayout.EnumPopup(mappedST, GUILayout.Width(400));
+
+                    // jave.lin : 重新映射
+                    semanticManullyMappingTypeDict_key_name_helper[semantic_name] = mappedST;
+                    if (check_duplicated_helper[(int)mappedST] > 1)
+                    {
+                        var src_col = GUI.contentColor;
+                        GUI.contentColor = Color.red;
+                        EditorGUILayout.LabelField("Duplicated Options");
+                        GUI.contentColor = src_col;
+                    }
+                    
+                    EditorGUILayout.EndHorizontal();
+                }
+
+                ClearSemantics_check_duplicated_helper(check_duplicated_helper);
+            }
 
             EditorGUI.indentLevel--;
         }
@@ -557,6 +687,42 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
+    private void Analysis_CSV_SemanticTitle()
+    {
+        if (semanticManullyMappingTypeDict_key_name_helper != null)
+        {
+            semanticManullyMappingTypeDict_key_name_helper.Clear();
+        }
+        else
+        {
+            semanticManullyMappingTypeDict_key_name_helper = new Dictionary<string, SemanticType>();
+        }
+        var text = RDC_Text_Asset.text;
+        var firstLine = text.Substring(0, text.IndexOf("\n")).Trim();
+        var line_element_splitor = new string[] { "," };
+        // jave.lin : 构建 vertex buffer format 的 semantics 和 idx 的对应关系
+        var semanticTitles = firstLine.Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
+
+        // jave.lin : 先加载 semanticTypeDict_key_name_helper 的映射
+        MappingSemanticsTypeByNames(ref semanticTypeDict_key_name_helper);
+
+        for (int i = 0; i < semanticTitles.Length; i++)
+        {
+            var title = semanticTitles[i];
+            var semantics = title.Trim();
+            if (semanticTypeDict_key_name_helper.TryGetValue(semantics, out SemanticType semanticType))
+            {
+                //Debug.Log($"semantics : {title.Trim()}, type : {semanticType}");
+                semanticManullyMappingTypeDict_key_name_helper[semantics] = semanticType;
+            }
+            else
+            {
+                //Debug.LogError($"Cannot find the semantic mapping data : {semantics}");
+                semanticManullyMappingTypeDict_key_name_helper[semantics] = SemanticType.Unknow;
+            }
+        }
+    }
+
     // jave.lin : 导出处理
     private void ExportHandle()
     {
@@ -565,7 +731,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             try
             {
                 // jave.lin : 先映射好 semantics 名字和类型
-                MappingSemanticsTypeByNames();
+                MappingSemanticsTypeByNames(ref semanticTypeDict_key_name_helper);
                 // jave.lin : 清理之前的 GO
                 var parent = GetParentTrans();
                 // jave.lin : 将 CSV 的内容转为 MeshRenderer 的 GO
@@ -596,7 +762,17 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                     var mat_created_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
                     mat_created_path = GetAssetPathByFullName(mat_created_path);
                     Debug.Log($"mat_created_path : {mat_created_path}");
-                    AssetDatabase.CreateAsset(create_mat, mat_created_path);
+                    // jave.lin : 先删除原来的
+                    var src_mat = AssetDatabase.LoadAssetAtPath<Material>(mat_created_path);
+                    if (src_mat == create_mat)
+                    {
+                        // nop
+                    }
+                    else
+                    {
+                        AssetDatabase.DeleteAsset(mat_created_path);
+                        AssetDatabase.CreateAsset(create_mat, mat_created_path);
+                    }
                 }
 
                 // jave.lin : 使用 FBX Exporter 插件导出 FBX
@@ -657,74 +833,78 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     }
 
     // jave.lin : 映射 semantics 的 name 和 type
-    private void MappingSemanticsTypeByNames()
+    private void MappingSemanticsTypeByNames(ref Dictionary<string, SemanticType> container)
     {
-        if (semanticTypeDict_key_name_helper == null)
+        if (container == null)
         {
-            semanticTypeDict_key_name_helper = new Dictionary<string, SemanticType>();
+            container = new Dictionary<string, SemanticType>();
         }
         else
         {
-            semanticTypeDict_key_name_helper.Clear();
+            container.Clear();
         }
-        semanticTypeDict_key_name_helper["VTX"]             = SemanticType.VTX;
-        semanticTypeDict_key_name_helper["IDX"]             = SemanticType.IDX;
-        semanticTypeDict_key_name_helper["SV_POSITION.x"] = SemanticType.POSITION_X;
-        semanticTypeDict_key_name_helper["SV_POSITION.y"] = SemanticType.POSITION_Y;
-        semanticTypeDict_key_name_helper["SV_POSITION.z"] = SemanticType.POSITION_Z;
-        semanticTypeDict_key_name_helper["SV_POSITION.w"] = SemanticType.POSITION_W;
-        semanticTypeDict_key_name_helper["POSITION.x"]      = SemanticType.POSITION_X;
-        semanticTypeDict_key_name_helper["POSITION.y"]      = SemanticType.POSITION_Y;
-        semanticTypeDict_key_name_helper["POSITION.z"]      = SemanticType.POSITION_Z;
-        semanticTypeDict_key_name_helper["POSITION.w"]      = SemanticType.POSITION_W;
-        semanticTypeDict_key_name_helper["NORMAL.x"]        = SemanticType.NORMAL_X;
-        semanticTypeDict_key_name_helper["NORMAL.y"]        = SemanticType.NORMAL_Y;
-        semanticTypeDict_key_name_helper["NORMAL.z"]        = SemanticType.NORMAL_Z;
-        semanticTypeDict_key_name_helper["NORMAL.w"]        = SemanticType.NORMAL_W;
-        semanticTypeDict_key_name_helper["TANGENT.x"]       = SemanticType.TANGENT_X;
-        semanticTypeDict_key_name_helper["TANGENT.y"]       = SemanticType.TANGENT_Y;
-        semanticTypeDict_key_name_helper["TANGENT.z"]       = SemanticType.TANGENT_Z;
-        semanticTypeDict_key_name_helper["TANGENT.w"]       = SemanticType.TANGENT_W;
-        semanticTypeDict_key_name_helper["TEXCOORD0.x"]     = SemanticType.TEXCOORD0_X;
-        semanticTypeDict_key_name_helper["TEXCOORD0.y"]     = SemanticType.TEXCOORD0_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD0.z"]     = SemanticType.TEXCOORD0_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD0.w"]     = SemanticType.TEXCOORD0_W;
-        semanticTypeDict_key_name_helper["TEXCOORD1.x"]     = SemanticType.TEXCOORD1_X;
-        semanticTypeDict_key_name_helper["TEXCOORD1.y"]     = SemanticType.TEXCOORD1_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD1.z"]     = SemanticType.TEXCOORD1_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD1.w"]     = SemanticType.TEXCOORD1_W;
-        semanticTypeDict_key_name_helper["TEXCOORD2.x"]     = SemanticType.TEXCOORD2_X;
-        semanticTypeDict_key_name_helper["TEXCOORD2.y"]     = SemanticType.TEXCOORD2_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD2.z"]     = SemanticType.TEXCOORD2_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD2.w"]     = SemanticType.TEXCOORD2_W;
-        semanticTypeDict_key_name_helper["TEXCOORD3.x"]     = SemanticType.TEXCOORD3_X;
-        semanticTypeDict_key_name_helper["TEXCOORD3.y"]     = SemanticType.TEXCOORD3_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD3.z"]     = SemanticType.TEXCOORD3_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD3.w"]     = SemanticType.TEXCOORD3_W;
-        semanticTypeDict_key_name_helper["TEXCOORD4.x"]     = SemanticType.TEXCOORD4_X;
-        semanticTypeDict_key_name_helper["TEXCOORD4.y"]     = SemanticType.TEXCOORD4_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD4.z"]     = SemanticType.TEXCOORD4_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD4.w"]     = SemanticType.TEXCOORD4_W;
-        semanticTypeDict_key_name_helper["TEXCOORD5.x"]     = SemanticType.TEXCOORD5_X;
-        semanticTypeDict_key_name_helper["TEXCOORD5.y"]     = SemanticType.TEXCOORD5_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD5.z"]     = SemanticType.TEXCOORD5_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD5.w"]     = SemanticType.TEXCOORD5_W;
-        semanticTypeDict_key_name_helper["TEXCOORD6.x"]     = SemanticType.TEXCOORD6_X;
-        semanticTypeDict_key_name_helper["TEXCOORD6.y"]     = SemanticType.TEXCOORD6_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD6.z"]     = SemanticType.TEXCOORD6_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD6.w"]     = SemanticType.TEXCOORD6_W;
-        semanticTypeDict_key_name_helper["TEXCOORD7.x"]     = SemanticType.TEXCOORD7_X;
-        semanticTypeDict_key_name_helper["TEXCOORD7.y"]     = SemanticType.TEXCOORD7_Y;
-        semanticTypeDict_key_name_helper["TEXCOORD7.z"]     = SemanticType.TEXCOORD7_Z;
-        semanticTypeDict_key_name_helper["TEXCOORD7.w"]     = SemanticType.TEXCOORD7_W;
-        semanticTypeDict_key_name_helper["COLOR0.x"]        = SemanticType.COLOR0_X;
-        semanticTypeDict_key_name_helper["COLOR0.y"]        = SemanticType.COLOR0_Y;
-        semanticTypeDict_key_name_helper["COLOR0.z"]        = SemanticType.COLOR0_Z;
-        semanticTypeDict_key_name_helper["COLOR0.w"]        = SemanticType.COLOR0_W;
-        semanticTypeDict_key_name_helper["COLOR.x"]         = SemanticType.COLOR0_X;
-        semanticTypeDict_key_name_helper["COLOR.y"]         = SemanticType.COLOR0_Y;
-        semanticTypeDict_key_name_helper["COLOR.z"]         = SemanticType.COLOR0_Z;
-        semanticTypeDict_key_name_helper["COLOR.w"]         = SemanticType.COLOR0_W;
+        container["VTX"]                = SemanticType.VTX;
+        container["IDX"]                = SemanticType.IDX;
+        container["SV_POSITION.x"]      = SemanticType.POSITION_X;
+        container["SV_POSITION.y"]      = SemanticType.POSITION_Y;
+        container["SV_POSITION.z"]      = SemanticType.POSITION_Z;
+        container["SV_POSITION.w"]      = SemanticType.POSITION_W;
+        container["SV_Position.x"]      = SemanticType.POSITION_X;
+        container["SV_Position.y"]      = SemanticType.POSITION_Y;
+        container["SV_Position.z"]      = SemanticType.POSITION_Z;
+        container["SV_Position.w"]      = SemanticType.POSITION_W;
+        container["POSITION.x"]         = SemanticType.POSITION_X;
+        container["POSITION.y"]         = SemanticType.POSITION_Y;
+        container["POSITION.z"]         = SemanticType.POSITION_Z;
+        container["POSITION.w"]         = SemanticType.POSITION_W;
+        container["NORMAL.x"]           = SemanticType.NORMAL_X;
+        container["NORMAL.y"]           = SemanticType.NORMAL_Y;
+        container["NORMAL.z"]           = SemanticType.NORMAL_Z;
+        container["NORMAL.w"]           = SemanticType.NORMAL_W;
+        container["TANGENT.x"]          = SemanticType.TANGENT_X;
+        container["TANGENT.y"]          = SemanticType.TANGENT_Y;
+        container["TANGENT.z"]          = SemanticType.TANGENT_Z;
+        container["TANGENT.w"]          = SemanticType.TANGENT_W;
+        container["TEXCOORD0.x"]        = SemanticType.TEXCOORD0_X;
+        container["TEXCOORD0.y"]        = SemanticType.TEXCOORD0_Y;
+        container["TEXCOORD0.z"]        = SemanticType.TEXCOORD0_Z;
+        container["TEXCOORD0.w"]        = SemanticType.TEXCOORD0_W;
+        container["TEXCOORD1.x"]        = SemanticType.TEXCOORD1_X;
+        container["TEXCOORD1.y"]        = SemanticType.TEXCOORD1_Y;
+        container["TEXCOORD1.z"]        = SemanticType.TEXCOORD1_Z;
+        container["TEXCOORD1.w"]        = SemanticType.TEXCOORD1_W;
+        container["TEXCOORD2.x"]        = SemanticType.TEXCOORD2_X;
+        container["TEXCOORD2.y"]        = SemanticType.TEXCOORD2_Y;
+        container["TEXCOORD2.z"]        = SemanticType.TEXCOORD2_Z;
+        container["TEXCOORD2.w"]        = SemanticType.TEXCOORD2_W;
+        container["TEXCOORD3.x"]        = SemanticType.TEXCOORD3_X;
+        container["TEXCOORD3.y"]        = SemanticType.TEXCOORD3_Y;
+        container["TEXCOORD3.z"]        = SemanticType.TEXCOORD3_Z;
+        container["TEXCOORD3.w"]        = SemanticType.TEXCOORD3_W;
+        container["TEXCOORD4.x"]        = SemanticType.TEXCOORD4_X;
+        container["TEXCOORD4.y"]        = SemanticType.TEXCOORD4_Y;
+        container["TEXCOORD4.z"]        = SemanticType.TEXCOORD4_Z;
+        container["TEXCOORD4.w"]        = SemanticType.TEXCOORD4_W;
+        container["TEXCOORD5.x"]        = SemanticType.TEXCOORD5_X;
+        container["TEXCOORD5.y"]        = SemanticType.TEXCOORD5_Y;
+        container["TEXCOORD5.z"]        = SemanticType.TEXCOORD5_Z;
+        container["TEXCOORD5.w"]        = SemanticType.TEXCOORD5_W;
+        container["TEXCOORD6.x"]        = SemanticType.TEXCOORD6_X;
+        container["TEXCOORD6.y"]        = SemanticType.TEXCOORD6_Y;
+        container["TEXCOORD6.z"]        = SemanticType.TEXCOORD6_Z;
+        container["TEXCOORD6.w"]        = SemanticType.TEXCOORD6_W;
+        container["TEXCOORD7.x"]        = SemanticType.TEXCOORD7_X;
+        container["TEXCOORD7.y"]        = SemanticType.TEXCOORD7_Y;
+        container["TEXCOORD7.z"]        = SemanticType.TEXCOORD7_Z;
+        container["TEXCOORD7.w"]        = SemanticType.TEXCOORD7_W;
+        container["COLOR0.x"]           = SemanticType.COLOR0_X;
+        container["COLOR0.y"]           = SemanticType.COLOR0_Y;
+        container["COLOR0.z"]           = SemanticType.COLOR0_Z;
+        container["COLOR0.w"]           = SemanticType.COLOR0_W;
+        container["COLOR.x"]            = SemanticType.COLOR0_X;
+        container["COLOR.y"]            = SemanticType.COLOR0_Y;
+        container["COLOR.z"]            = SemanticType.COLOR0_Z;
+        container["COLOR.w"]            = SemanticType.COLOR0_W;
     }
 
     // jave.lin : 获取 parent transform 对象
@@ -965,6 +1145,9 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             case SemanticType.COLOR0_W:
                 info.COLOR0_W = float.Parse(data);
                 break;
+            case SemanticType.Unknow:
+                // jave.lin : nop
+                break;
             // jave.lin : un-implements
             default:
                 Debug.LogError($"Fill_A2V_Common_Type_Data un-implements SemanticType : {semanticType}");
@@ -998,7 +1181,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             }
             else
             {
-                Debug.LogError($"un-implements semantic : {semantics}");
+                Debug.LogWarning($"un-implements semantic : {semantics}");
             }
         }
 
@@ -1009,6 +1192,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
         var indices = new List<int>();
 
+        var min_idx = int.MaxValue;
         for (int i = 1; i < lines.Length; i++)
         {
             var line = lines[i];
@@ -1016,6 +1200,19 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
             // jave.lin : 第几个顶点索引（0~count-1)
             var idx = int.Parse(linesElements[1]);
+            if (min_idx > idx)
+            {
+                min_idx = idx;
+            }
+        }
+
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var linesElements = line.Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
+
+            // jave.lin : 第几个顶点索引（0~count-1)
+            var idx = int.Parse(linesElements[1]) - min_idx;
 
             // jave.lin : indices 缓存索引数据的添加
             indices.Add(idx);
@@ -1077,7 +1274,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
         // jave.lin : 设置 mesh 信息
         mesh.vertices   = vertices;
-        mesh.triangles  = indices.ToArray();
+
+        // jave.lin : 是否 revert idx
+        if (is_revert_vertex_order) indices.Reverse();
+        mesh.triangles = indices.ToArray();
 
         // jave.lin : unity 不能超过 uv[0~7]
         mesh.uv         = has_uv0 ? uv : null;
