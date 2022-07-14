@@ -1168,16 +1168,26 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         // jave.lin : 构建 vertex buffer format 的 semantics 和 idx 的对应关系
         var semanticTitles = lines[0].Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
 
+        Dictionary<string, SemanticType> semantic_type_map_key_name;
+        if (semanticMappingType == SemanticMappingType.Default)
+        {
+            semantic_type_map_key_name = semanticTypeDict_key_name_helper;
+        }
+        else
+        {
+            semantic_type_map_key_name = semanticManullyMappingTypeDict_key_name_helper;
+        }
+
         semanticsIDX_helper = new SemanticType[semanticTitles.Length];
         Debug.Log($"semanticTitles : {lines[0]}");
         for (int i = 0; i < semanticTitles.Length; i++)
         {
             var title = semanticTitles[i];
             var semantics = title.Trim();
-            if (semanticTypeDict_key_name_helper.TryGetValue(semantics, out SemanticType semanticType))
+            if (semantic_type_map_key_name.TryGetValue(semantics, out SemanticType semanticType))
             {
                 semanticsIDX_helper[i] = semanticType;
-                //Debug.Log($"semantics : {title.Trim()}, type : {semanticType}");
+                //Debug.Log($"semantics : {semantics}, type : {semanticType}");
             }
             else
             {
