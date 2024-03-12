@@ -1,5 +1,5 @@
 // jave.lin : 2022/06/15
-// ³¢ÊÔ½« RenderDoc µ¼³öµÄ CSV£¬ÔÙ´Îµ¼³ö³É FBX
+// å°è¯•å°† RenderDoc å¯¼å‡ºçš„ CSVï¼Œå†æ¬¡å¯¼å‡ºæˆ FBX
 // Requirments : Unity FBX Export Packages
 // Output Pipeline : Unity URP
 
@@ -20,14 +20,14 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         win.Show();
     }
 
-    // jave.lin : ¶¥µãË÷ÒıĞÅÏ¢
+    // jave.lin : é¡¶ç‚¹ç´¢å¼•ä¿¡æ¯
     public class VertexIDInfo
     {
-        public int IDX;                 // Ë÷Òı
-        public VertexInfo vertexInfo;   // ¶¥µãĞÅÏ¢
+        public int IDX;                 // ç´¢å¼•
+        public VertexInfo vertexInfo;   // é¡¶ç‚¹ä¿¡æ¯
     }
 
-    // jave.lin : ÓïÒåµÄÀàĞÍ
+    // jave.lin : è¯­ä¹‰çš„ç±»å‹
     public enum SemanticType
     {
         Unknow,
@@ -97,21 +97,21 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         COLOR0_W,
     }
 
-    // jave.lin : Semantic Ó³ÉäÀàĞÍ
+    // jave.lin : Semantic æ˜ å°„ç±»å‹
     public enum SemanticMappingType
     {
-        Default,            // jave.lin : Ê¹ÓÃÄ¬ÈÏµÄ
-        ManuallyMapping,    // jave.lin : Ê¹ÓÃÊÖ¶¯ÉèÖÃÓ³ÉäµÄ
+        Default,            // jave.lin : ä½¿ç”¨é»˜è®¤çš„
+        ManuallyMapping,    // jave.lin : ä½¿ç”¨æ‰‹åŠ¨è®¾ç½®æ˜ å°„çš„
     }
 
-    // jave.lin : ²ÄÖÊÉèÖÃµÄ·½Ê½
+    // jave.lin : æè´¨è®¾ç½®çš„æ–¹å¼
     public enum MaterialSetType
     {
         CreateNew,
         UsingExsitMaterialAsset,
     }
 
-    // jave.lin : application to vertex shader µÄÍ¨ÓÃÀàĞÍ£¨¸¨Öú×ª»»ÓÃ£©
+    // jave.lin : application to vertex shader çš„é€šç”¨ç±»å‹ï¼ˆè¾…åŠ©è½¬æ¢ç”¨ï¼‰
     public class VertexInfo
     {
         public int VTX;
@@ -188,7 +188,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             }
         }
 
-        // jave.lin : Æë´Î×ø±ê
+        // jave.lin : é½æ¬¡åæ ‡
         public Vector4 POSITION_H
         {
             get
@@ -335,7 +335,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
     private const string GO_Parent_Name = "Models_From_CSV";
 
-    // jave.lin : on_gui ÉÏÏÔÊ¾µÄ¶ÔÏó
+    // jave.lin : on_gui ä¸Šæ˜¾ç¤ºçš„å¯¹è±¡
     private TextAsset RDC_Text_Asset;
     private string fbxName;
     private string outputDir;
@@ -351,6 +351,9 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     private bool is_reverse_vertex_order = true; // jave.lin : for reverse normal
     private bool is_recalculate_bound = true;
     private SemanticMappingType semanticMappingType = SemanticMappingType.Default;
+
+    private bool include_normal = true;
+    private bool include_tangent = true;
     private bool include_uv0 = true;
     private bool include_uv1 = false;
     private bool include_uv2 = false;
@@ -368,7 +371,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
     private Texture texture;
     private Material material;
 
-    // jave.lin : helper ¶ÔÏó
+    // jave.lin : helper obj
     private Dictionary<string, SemanticType> semanticTypeDict_key_name_helper;
     private Dictionary<string, SemanticType> semanticManullyMappingTypeDict_key_name_helper;
     private SemanticType[] semanticsIDX_helper;
@@ -377,7 +380,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
     private int[] GetSemantics_check_duplicated_helper()
     {
-        if (semantics_check_duplicated_helper == null)
+        if (semantics_check_duplicated_helper == null || semantics_check_duplicated_helper.Length == 0)
         {
             var vals = Enum.GetValues(typeof(SemanticType));
             semantics_check_duplicated_helper = new int[vals.Length];
@@ -406,7 +409,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         return stringListHelper;
     }
 
-    // jave.lin : É¾³ıÖ¸¶¨Ä¿Â¼+Ä¿Â¼ÏÂµÄËùÓĞÎÄ¼ş
+    // jave.lin : åˆ é™¤æŒ‡å®šç›®å½•+ç›®å½•ä¸‹çš„æ‰€æœ‰æ–‡ä»¶
     private void DelectDir(string dir)
     {
         try
@@ -415,19 +418,19 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 return;
 
             DirectoryInfo dirInfo = new DirectoryInfo(dir);
-            // ·µ»ØÄ¿Â¼ÖĞËùÓĞÎÄ¼şºÍ×ÓÄ¿Â¼
+            // è¿”å›ç›®å½•ä¸­æ‰€æœ‰æ–‡ä»¶å’Œå­ç›®å½•
             FileSystemInfo[] fileInfos = dirInfo.GetFileSystemInfos();
             foreach (FileSystemInfo fileInfo in fileInfos)
             {
                 if (fileInfo is DirectoryInfo)
                 {
-                    // ÅĞ¶ÏÊÇ·ñÎÄ¼ş¼Ğ
+                    // åˆ¤æ–­æ˜¯å¦æ–‡ä»¶å¤¹
                     DirectoryInfo subDir = new DirectoryInfo(fileInfo.FullName);
-                    subDir.Delete(true);            // É¾³ı×ÓÄ¿Â¼ºÍÎÄ¼ş
+                    subDir.Delete(true);            // åˆ é™¤å­ç›®å½•å’Œæ–‡ä»¶
                 }
                 else
                 {
-                    File.Delete(fileInfo.FullName);      // É¾³ıÖ¸¶¨ÎÄ¼ş
+                    File.Delete(fileInfo.FullName);      // åˆ é™¤æŒ‡å®šæ–‡ä»¶
                 }
             }
         }
@@ -437,7 +440,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
     }
 
-    // jave.lin : ¸ù¾İÈ«Â·¾¶Ãû ×ª»»Îª assets Ä¿Â¼ÏÂµÄÃû×Ö
+    // jave.lin : æ ¹æ®å…¨è·¯å¾„å è½¬æ¢ä¸º assets ç›®å½•ä¸‹çš„åå­—
     private string GetAssetPathByFullName(string fullName)
     {
         fullName = fullName.Replace("\\", "/");
@@ -452,13 +455,29 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         Output_RDC_CSV_Handle();
     }
 
+    // jave.lin : è·å–Shader
+    private Shader GetShader(string custom_shader_name = null)
+    {
+        Shader ret = null;
+        if (string.IsNullOrEmpty(custom_shader_name))
+            ret = Shader.Find(custom_shader_name); // jave.lin : custom special
+        if (ret == null) // jave.lin : BRP standard
+            ret = Shader.Find("Standard");
+        if (ret == null)
+            ret = Shader.Find("Universal Render Pipeline/Lit"); // jave.lin : URP Lit
+        if (ret == null)
+            Debug.LogError($"æ‰¾ä¸åˆ° BRP Standard shader æˆ–æ˜¯ URP Lit shader");
+
+        return ret;
+    }
+
     private void Output_RDC_CSV_Handle()
     {
-        // jave.lin : RenderDoc µÄ CSV µÄ .txt ÎÄ¼ş
+        // jave.lin : RenderDoc çš„ CSV çš„ .txt æ–‡ä»¶
         var new_textAsset = EditorGUILayout.ObjectField("RDC_CSV", RDC_Text_Asset, typeof(TextAsset), false) as TextAsset;
 
         var refresh_csv = false;
-        // jave.lin : Èç¹û CSV ÇĞ»»ÁË
+        // jave.lin : å¦‚æœ CSV åˆ‡æ¢äº†
         if (RDC_Text_Asset != new_textAsset)
         {
             refresh_csv = true;
@@ -481,7 +500,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             ClearSemantics_check_duplicated_helper(semantics_check_duplicated_helper);
         }
 
-        // jave.lin : FBX Ä£ĞÍÃû×Ö
+        // jave.lin : FBX æ¨¡å‹åå­—
         fbxName = EditorGUILayout.TextField("FBX Name", fbxName);
         if (RDC_Text_Asset != null && (refresh_csv || string.IsNullOrEmpty(fbxName)))
         {
@@ -493,7 +512,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         outputDir = EditorGUILayout.TextField("Output Path(Dir)", outputDir);
         if (refresh_csv || string.IsNullOrEmpty(outputDir))
         {
-            // jave.lin : Æ´½ÓÉú³ÉÂ·¾¶
+            // jave.lin : æ‹¼æ¥ç”Ÿæˆè·¯å¾„
             outputDir = Path.Combine(Application.dataPath, $"Models_From_CSV/{fbxName}");
             outputDir = outputDir.Replace("\\", "/");
         }
@@ -501,41 +520,60 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         {
             outputDir = EditorUtility.OpenFolderPanel("Select an output path", outputDir, "");
         }
+        if (GUILayout.Button("Pin", GUILayout.Width(100)))
+        {
+            var folderPath = "";
+            if (outputDir.Contains(Application.dataPath))
+            {
+                folderPath = "Assets" + outputDir.Replace(Application.dataPath, "");
+            }
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(folderPath);
+            if (obj != null) EditorGUIUtility.PingObject(obj);
+        }
         EditorGUILayout.EndHorizontal();
-        // jave.lin : ÏÔÊ¾µ¼³öµÄ full name
+        // jave.lin : æ˜¾ç¤ºå¯¼å‡ºçš„ full name
         GUI.enabled = false;
         outputFullName = Path.Combine(outputDir, fbxName + ".fbx");
         outputFullName = outputFullName.Replace("\\", "/");
         EditorGUILayout.TextField("Output Full Name", outputFullName);
         GUI.enabled = true;
 
-        // jave.lin : µ¼³ö CSV ¶ÔÓ¦µÄ FBX
+        // jave.lin : å¯¼å‡º CSV å¯¹åº”çš„ FBX
         if (GUILayout.Button("Export FBX"))
         {
             ExportHandle();
         }
 
-        // jave.lin : ÏÔÊ¾ scroll view
+        // jave.lin : æ˜¾ç¤º scroll view
         optionsScrollPos = EditorGUILayout.BeginScrollView(optionsScrollPos);
 
-        // jave.lin : options ÄÚÈİ
+        // jave.lin : options å†…å®¹
         EditorGUILayout.Space(10);
         options_show = EditorGUILayout.BeginFoldoutHeaderGroup(options_show, "Model Options");
         if (options_show)
         {
             EditorGUI.indentLevel++;
-            // jave.lin : ÊÇ·ñ´Ó dx µÄ Graphics API µ¼³ö¶øÀ´µÄ CSV
+            // jave.lin : æ˜¯å¦ä» dx çš„ Graphics API å¯¼å‡ºè€Œæ¥çš„ CSV
             is_from_DX_CSV = EditorGUILayout.Toggle("Is From DirectX CSV", is_from_DX_CSV);
-            // jave.lin : ÊÇ·ñ·´×ª·¨Ïß : Í¨¹ı·´×ª indices µÄË³Ğò¼´¿É´ïµ½Ğ§¹û
+            // jave.lin : æ˜¯å¦åè½¬æ³•çº¿ : é€šè¿‡åè½¬ indices çš„é¡ºåºå³å¯è¾¾åˆ°æ•ˆæœ
             is_reverse_vertex_order = EditorGUILayout.Toggle("Is Reverse Normal", is_reverse_vertex_order);
-            // jave.lin : ÊÇ·ñÖØĞÂ¼ÆËã AABB
+            // jave.lin : æ˜¯å¦é‡æ–°è®¡ç®— AABB
             is_recalculate_bound = EditorGUILayout.Toggle("Is Recalculate AABB", is_recalculate_bound);
-            // jave.lin : ¶¥µãÆ½ÒÆ
+            // jave.lin : é¡¶ç‚¹å¹³ç§»
             vertexOffset = EditorGUILayout.Vector3Field("Vertex Offset", vertexOffset);
-            // jave.lin : ¶¥µãĞı×ª
+            // jave.lin : é¡¶ç‚¹æ—‹è½¬
             vertexRotation = EditorGUILayout.Vector3Field("Vertex Rotation", vertexRotation);
-            // jave.lin : ¶¥µãËõ·Å
+            // jave.lin : é¡¶ç‚¹ç¼©æ”¾
             vertexScale = EditorGUILayout.Vector3Field("Vertex Scale", vertexScale);
+            // jave.lin : auto toggle includes by csv titles
+            if (GUILayout.Button("Auto Toggle Includes by CSV titles"))
+            {
+                AutoToggleIncludeByCSVTitles();
+            }
+            // jave.lin : include normal, tangent
+            //include_normal, include_tangent
+            include_normal = EditorGUILayout.Toggle("Includes normal", include_normal);
+            include_tangent = EditorGUILayout.Toggle("Includes tangent", include_tangent);
             // jave.lin : include_uv0,1,2,3,4,5,6,7
             include_uv0 = EditorGUILayout.Toggle("Includes UV0", include_uv0);
             include_uv1 = EditorGUILayout.Toggle("Includes UV1", include_uv1);
@@ -547,11 +585,17 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             include_uv7 = EditorGUILayout.Toggle("Includes UV7", include_uv7);
             // jave.lin : include_color0
             include_color0 = EditorGUILayout.Toggle("Includes Color0", include_color0);
-            // jave.lin : ·¨Ïßµ¼Èë·½Ê½
-            normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
-            // jave.lin : ÇĞÏßµ¼Èë·½Ê½
-            tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
-            // jave.lin : semantic Ó³ÉäÀàĞÍ
+            // jave.lin : æ³•çº¿å¯¼å…¥æ–¹å¼
+            if (include_normal)
+            {
+                normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
+            }
+            // jave.lin : åˆ‡çº¿å¯¼å…¥æ–¹å¼
+            if (include_tangent)
+            {
+                tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
+            }
+            // jave.lin : semantic æ˜ å°„ç±»å‹
             semanticMappingType = (SemanticMappingType)EditorGUILayout.EnumPopup("Semantic Mapping Type", semanticMappingType);
             if (semanticMappingType == SemanticMappingType.ManuallyMapping)
             {
@@ -571,13 +615,13 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                     Analysis_CSV_SemanticTitle();
                 }
 
-                // jave.lin : semantic µÄÊÖ¶¯ÉèÖÃÊı¾İ
+                // jave.lin : semantic çš„æ‰‹åŠ¨è®¾ç½®æ•°æ®
                 var keys = semanticManullyMappingTypeDict_key_name_helper.Keys;
                 var stringList = GetStringListHelper();
                 stringList.Clear();
                 stringList.AddRange(keys);
 
-                // jave.lin : ¸ù¾İÃû×ÖÅÅĞòÒ»ÏÂ
+                // jave.lin : æ ¹æ®åå­—æ’åºä¸€ä¸‹
                 stringList.Sort();
 
                 var check_duplicated_helper = GetSemantics_check_duplicated_helper();
@@ -590,7 +634,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                     }
                 }
 
-                // jave.lin : ÏÔÊ¾ semantic manually mapping data µÄ¿Ø¼ş µÄ title
+                // jave.lin : æ˜¾ç¤º semantic manually mapping data çš„æ§ä»¶ çš„ title
                 EditorGUILayout.BeginHorizontal();
                 {
                     var src_col = GUI.contentColor;
@@ -601,7 +645,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 }
                 EditorGUILayout.EndHorizontal();
 
-                // jave.lin : ÏÔÊ¾ semantic manually mapping data µÄ¿Ø¼ş
+                // jave.lin : æ˜¾ç¤º semantic manually mapping data çš„æ§ä»¶
                 for (int i = 0; i < stringList.Count; i++)
                 {
                     var semantic_name = stringList[i];
@@ -614,10 +658,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                         continue;
                     }
 
-                    // jave.lin : ¿Ø¼şÏÔÊ¾£¬ĞŞ¸Ä
+                    // jave.lin : æ§ä»¶æ˜¾ç¤ºï¼Œä¿®æ”¹
                     mappedST = (SemanticType)EditorGUILayout.EnumPopup(mappedST, GUILayout.Width(400));
 
-                    // jave.lin : ÖØĞÂÓ³Éä
+                    // jave.lin : é‡æ–°æ˜ å°„
                     semanticManullyMappingTypeDict_key_name_helper[semantic_name] = mappedST;
                     if (check_duplicated_helper[(int)mappedST] > 1)
                     {
@@ -637,7 +681,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
 
-        // jave.lin : ÊÇ·ñ×Ô¶¯´´½¨²ÄÖÊ
+        // jave.lin : æ˜¯å¦è‡ªåŠ¨åˆ›å»ºæè´¨
         EditorGUILayout.Space(10);
         show_mat_toggle = EditorGUILayout.BeginFoldoutHeaderGroup(show_mat_toggle, "Material Options");
         if (show_mat_toggle)
@@ -647,19 +691,19 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             if (material == null || materialSetType != newMaterialSetType)
             {
                 materialSetType = newMaterialSetType;
-                // jave.lin : ´´½¨
+                // jave.lin : åˆ›å»º
                 if (materialSetType == MaterialSetType.CreateNew)
                 {
-                    // jave.lin : shader ²»ÄÜÎª¿Õ
+                    // jave.lin : shader ä¸èƒ½ä¸ºç©º
                     if (shader == null)
                     {
-                        shader = Shader.Find("Universal Render Pipeline/Lit");
+                        shader = GetShader();
                     }
                     material = new Material(shader);
                 }
                 else
                 {
-                    // jave.lin : Ä¬ÈÏÊ¹ÓÃ µ¼³öÄ¿Â¼ÏÂµÄ mat ²ÄÖÊ
+                    // jave.lin : é»˜è®¤ä½¿ç”¨ å¯¼å‡ºç›®å½•ä¸‹çš„ mat æè´¨
                     var mat_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
                     mat_path = GetAssetPathByFullName(mat_path);
                     var mat_asset = AssetDatabase.LoadAssetAtPath<Material>(mat_path);
@@ -669,12 +713,12 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
             if (materialSetType == MaterialSetType.CreateNew)
             {
-                // jave.lin : Ê¹ÓÃµÄ shader
+                // jave.lin : ä½¿ç”¨çš„ shader
                 shader = EditorGUILayout.ObjectField("Shader", shader, typeof(Shader), false) as Shader;
-                // jave.lin : Ê¹ÓÃµÄ Ö÷ÎÆÀí
+                // jave.lin : ä½¿ç”¨çš„ ä¸»çº¹ç†
                 texture = EditorGUILayout.ObjectField("Main Texture", texture, typeof(Texture), false) as Texture;
             }
-            // jave.lin : ÉèÖÃ
+            // jave.lin : è®¾ç½®
             else // MaterialSetType.UseExsitMaterialAsset
             {
                 material = EditorGUILayout.ObjectField("Material Asset", material, typeof(Material), false) as Material;
@@ -685,6 +729,93 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         EditorGUILayout.EndFoldoutHeaderGroup();
 
         EditorGUILayout.EndScrollView();
+    }
+
+    private void AutoToggleIncludeByCSVTitles()
+    {
+        // jave.lin : auto-toggle include
+        for (int i = 0; i < semanticsIDX_helper.Length; i++)
+        {
+            switch (semanticsIDX_helper[i])
+            {
+                case SemanticType.NORMAL_X:
+                case SemanticType.NORMAL_Y:
+                case SemanticType.NORMAL_Z:
+                case SemanticType.NORMAL_W:
+                    include_normal = true;
+                    break;
+
+                case SemanticType.TANGENT_X:
+                case SemanticType.TANGENT_Y:
+                case SemanticType.TANGENT_Z:
+                case SemanticType.TANGENT_W:
+                    include_tangent = true;
+                    break;
+
+                case SemanticType.TEXCOORD0_X:
+                case SemanticType.TEXCOORD0_Y:
+                case SemanticType.TEXCOORD0_Z:
+                case SemanticType.TEXCOORD0_W:
+                    include_uv0 = true;
+                    break;
+
+                case SemanticType.TEXCOORD1_X:
+                case SemanticType.TEXCOORD1_Y:
+                case SemanticType.TEXCOORD1_Z:
+                case SemanticType.TEXCOORD1_W:
+                    include_uv1 = true;
+                    break;
+
+                case SemanticType.TEXCOORD2_X:
+                case SemanticType.TEXCOORD2_Y:
+                case SemanticType.TEXCOORD2_Z:
+                case SemanticType.TEXCOORD2_W:
+                    include_uv2 = true;
+                    break;
+
+                case SemanticType.TEXCOORD3_X:
+                case SemanticType.TEXCOORD3_Y:
+                case SemanticType.TEXCOORD3_Z:
+                case SemanticType.TEXCOORD3_W:
+                    include_uv3 = true;
+                    break;
+
+                case SemanticType.TEXCOORD4_X:
+                case SemanticType.TEXCOORD4_Y:
+                case SemanticType.TEXCOORD4_Z:
+                case SemanticType.TEXCOORD4_W:
+                    include_uv4 = true;
+                    break;
+
+                case SemanticType.TEXCOORD5_X:
+                case SemanticType.TEXCOORD5_Y:
+                case SemanticType.TEXCOORD5_Z:
+                case SemanticType.TEXCOORD5_W:
+                    include_uv5 = true;
+                    break;
+
+                case SemanticType.TEXCOORD6_X:
+                case SemanticType.TEXCOORD6_Y:
+                case SemanticType.TEXCOORD6_Z:
+                case SemanticType.TEXCOORD6_W:
+                    include_uv6 = true;
+                    break;
+
+                case SemanticType.TEXCOORD7_X:
+                case SemanticType.TEXCOORD7_Y:
+                case SemanticType.TEXCOORD7_Z:
+                case SemanticType.TEXCOORD7_W:
+                    include_uv7 = true;
+                    break;
+
+                case SemanticType.COLOR0_X:
+                case SemanticType.COLOR0_Y:
+                case SemanticType.COLOR0_Z:
+                case SemanticType.COLOR0_W:
+                    include_color0 = true;
+                    break;
+            }
+        }
     }
 
     private void Analysis_CSV_SemanticTitle()
@@ -700,19 +831,18 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         var text = RDC_Text_Asset.text;
         var firstLine = text.Substring(0, text.IndexOf("\n")).Trim();
         var line_element_splitor = new string[] { "," };
-        // jave.lin : ¹¹½¨ vertex buffer format µÄ semantics ºÍ idx µÄ¶ÔÓ¦¹ØÏµ
+        // jave.lin : æ„å»º vertex buffer format çš„ semantics å’Œ idx çš„å¯¹åº”å…³ç³»
         var semanticTitles = firstLine.Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
 
-        // jave.lin : ÏÈ¼ÓÔØ semanticTypeDict_key_name_helper µÄÓ³Éä
+        // jave.lin : å…ˆåŠ è½½ semanticTypeDict_key_name_helper çš„æ˜ å°„
         MappingSemanticsTypeByNames(ref semanticTypeDict_key_name_helper);
 
         for (int i = 0; i < semanticTitles.Length; i++)
         {
-            var title = semanticTitles[i];
-            var semantics = title.Trim();
+            var semantics = semanticTitles[i].Trim().ToUpper();
             if (semanticTypeDict_key_name_helper.TryGetValue(semantics, out SemanticType semanticType))
             {
-                //Debug.Log($"semantics : {title.Trim()}, type : {semanticType}");
+                //Debug.Log($"semantics : {semantics.Trim()}, type : {semanticType}");
                 semanticManullyMappingTypeDict_key_name_helper[semantics] = semanticType;
             }
             else
@@ -723,18 +853,18 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
     }
 
-    // jave.lin : µ¼³ö´¦Àí
+    // jave.lin : å¯¼å‡ºå¤„ç†
     private void ExportHandle()
     {
         if (RDC_Text_Asset != null)
         {
             try
             {
-                // jave.lin : ÏÈÓ³ÉäºÃ semantics Ãû×ÖºÍÀàĞÍ
+                // jave.lin : å…ˆæ˜ å°„å¥½ semantics åå­—å’Œç±»å‹
                 MappingSemanticsTypeByNames(ref semanticTypeDict_key_name_helper);
-                // jave.lin : ÇåÀíÖ®Ç°µÄ GO
+                // jave.lin : æ¸…ç†ä¹‹å‰çš„ GO
                 var parent = GetParentTrans();
-                // jave.lin : ½« CSV µÄÄÚÈİ×ªÎª MeshRenderer µÄ GO
+                // jave.lin : å°† CSV çš„å†…å®¹è½¬ä¸º MeshRenderer çš„ GO
                 var outputGO = GameObject.Find($"{GO_Parent_Name }/{fbxName}");
                 if (outputGO != null)
                 {
@@ -744,9 +874,9 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 outputGO.transform.SetParent(parent);
                 outputGO.name = fbxName;
 
-                //// jave.lin : ÏÈÇåÀíÄ¿Â¼ÏÂµÄÄÚÈİ
+                //// jave.lin : å…ˆæ¸…ç†ç›®å½•ä¸‹çš„å†…å®¹
                 //DelectDir(outputDir);
-                // jave.lin : È»ºóÖØĞÂ´´½¨ĞÂµÄÄ¿Â¼
+                // jave.lin : ç„¶åé‡æ–°åˆ›å»ºæ–°çš„ç›®å½•
                 if (!Directory.Exists(outputDir))
                 {
                     Directory.CreateDirectory(outputDir);
@@ -754,15 +884,15 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
                 if (materialSetType == MaterialSetType.CreateNew)
                 {
-                    // jave.lin : ×Ô¶¯´´½¨²ÄÖÊ
+                    // jave.lin : è‡ªåŠ¨åˆ›å»ºæè´¨
                     var create_mat = outputGO.GetComponent<MeshRenderer>().sharedMaterial;
-                    // jave.lin : ´´½¨Ç°£¬ÏÈÉèÖÃÖ÷ÎÆÀí
+                    // jave.lin : åˆ›å»ºå‰ï¼Œå…ˆè®¾ç½®ä¸»çº¹ç†
                     create_mat.mainTexture = texture;
 
                     var mat_created_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
                     mat_created_path = GetAssetPathByFullName(mat_created_path);
                     Debug.Log($"mat_created_path : {mat_created_path}");
-                    // jave.lin : ÏÈÉ¾³ıÔ­À´µÄ
+                    // jave.lin : å…ˆåˆ é™¤åŸæ¥çš„
                     var src_mat = AssetDatabase.LoadAssetAtPath<Material>(mat_created_path);
                     if (src_mat == create_mat)
                     {
@@ -775,12 +905,12 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                     }
                 }
 
-                // jave.lin : Ê¹ÓÃ FBX Exporter ²å¼şµ¼³ö FBX
+                // jave.lin : ä½¿ç”¨ FBX Exporter æ’ä»¶å¯¼å‡º FBX
                 ModelExporter.ExportObject(outputFullName, outputGO);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
 
-                // jave.lin : ÖØĞÂÉèÖÃ MI£¬²¢ÇÒÖØĞÂµ¼Èë
+                // jave.lin : é‡æ–°è®¾ç½® MIï¼Œå¹¶ä¸”é‡æ–°å¯¼å…¥
                 string mi_path = GetAssetPathByFullName(outputFullName);
                 ModelImporter mi = ModelImporter.GetAtPath(mi_path) as ModelImporter;
                 mi.importNormals = normalImportType;
@@ -822,7 +952,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 Debug.Log($"prefab_created_path : {prefab_created_path}");
                 PrefabUtility.SaveAsPrefabAssetAndConnect(outputGO, prefab_created_path, InteractionMode.AutomatedAction);
 
-                // jave.lin : ´òÓ¡´ò³ö³É¹¦µÄĞÅÏ¢
+                // jave.lin : æ‰“å°æ‰“å‡ºæˆåŠŸçš„ä¿¡æ¯
                 Debug.Log($"Export FBX Successfully! outputPath : {outputFullName}");
             }
             catch (Exception er)
@@ -832,7 +962,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
     }
 
-    // jave.lin : Ó³Éä semantics µÄ name ºÍ type
+    // jave.lin : æ˜ å°„ semantics çš„ name å’Œ type
     private void MappingSemanticsTypeByNames(ref Dictionary<string, SemanticType> container)
     {
         if (container == null)
@@ -843,71 +973,143 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         {
             container.Clear();
         }
-        container["VTX"]                = SemanticType.VTX;
-        container["IDX"]                = SemanticType.IDX;
-        container["SV_POSITION.x"]      = SemanticType.POSITION_X;
-        container["SV_POSITION.y"]      = SemanticType.POSITION_Y;
-        container["SV_POSITION.z"]      = SemanticType.POSITION_Z;
-        container["SV_POSITION.w"]      = SemanticType.POSITION_W;
-        container["SV_Position.x"]      = SemanticType.POSITION_X;
-        container["SV_Position.y"]      = SemanticType.POSITION_Y;
-        container["SV_Position.z"]      = SemanticType.POSITION_Z;
-        container["SV_Position.w"]      = SemanticType.POSITION_W;
-        container["POSITION.x"]         = SemanticType.POSITION_X;
-        container["POSITION.y"]         = SemanticType.POSITION_Y;
-        container["POSITION.z"]         = SemanticType.POSITION_Z;
-        container["POSITION.w"]         = SemanticType.POSITION_W;
-        container["NORMAL.x"]           = SemanticType.NORMAL_X;
-        container["NORMAL.y"]           = SemanticType.NORMAL_Y;
-        container["NORMAL.z"]           = SemanticType.NORMAL_Z;
-        container["NORMAL.w"]           = SemanticType.NORMAL_W;
-        container["TANGENT.x"]          = SemanticType.TANGENT_X;
-        container["TANGENT.y"]          = SemanticType.TANGENT_Y;
-        container["TANGENT.z"]          = SemanticType.TANGENT_Z;
-        container["TANGENT.w"]          = SemanticType.TANGENT_W;
-        container["TEXCOORD0.x"]        = SemanticType.TEXCOORD0_X;
-        container["TEXCOORD0.y"]        = SemanticType.TEXCOORD0_Y;
-        container["TEXCOORD0.z"]        = SemanticType.TEXCOORD0_Z;
-        container["TEXCOORD0.w"]        = SemanticType.TEXCOORD0_W;
-        container["TEXCOORD1.x"]        = SemanticType.TEXCOORD1_X;
-        container["TEXCOORD1.y"]        = SemanticType.TEXCOORD1_Y;
-        container["TEXCOORD1.z"]        = SemanticType.TEXCOORD1_Z;
-        container["TEXCOORD1.w"]        = SemanticType.TEXCOORD1_W;
-        container["TEXCOORD2.x"]        = SemanticType.TEXCOORD2_X;
-        container["TEXCOORD2.y"]        = SemanticType.TEXCOORD2_Y;
-        container["TEXCOORD2.z"]        = SemanticType.TEXCOORD2_Z;
-        container["TEXCOORD2.w"]        = SemanticType.TEXCOORD2_W;
-        container["TEXCOORD3.x"]        = SemanticType.TEXCOORD3_X;
-        container["TEXCOORD3.y"]        = SemanticType.TEXCOORD3_Y;
-        container["TEXCOORD3.z"]        = SemanticType.TEXCOORD3_Z;
-        container["TEXCOORD3.w"]        = SemanticType.TEXCOORD3_W;
-        container["TEXCOORD4.x"]        = SemanticType.TEXCOORD4_X;
-        container["TEXCOORD4.y"]        = SemanticType.TEXCOORD4_Y;
-        container["TEXCOORD4.z"]        = SemanticType.TEXCOORD4_Z;
-        container["TEXCOORD4.w"]        = SemanticType.TEXCOORD4_W;
-        container["TEXCOORD5.x"]        = SemanticType.TEXCOORD5_X;
-        container["TEXCOORD5.y"]        = SemanticType.TEXCOORD5_Y;
-        container["TEXCOORD5.z"]        = SemanticType.TEXCOORD5_Z;
-        container["TEXCOORD5.w"]        = SemanticType.TEXCOORD5_W;
-        container["TEXCOORD6.x"]        = SemanticType.TEXCOORD6_X;
-        container["TEXCOORD6.y"]        = SemanticType.TEXCOORD6_Y;
-        container["TEXCOORD6.z"]        = SemanticType.TEXCOORD6_Z;
-        container["TEXCOORD6.w"]        = SemanticType.TEXCOORD6_W;
-        container["TEXCOORD7.x"]        = SemanticType.TEXCOORD7_X;
-        container["TEXCOORD7.y"]        = SemanticType.TEXCOORD7_Y;
-        container["TEXCOORD7.z"]        = SemanticType.TEXCOORD7_Z;
-        container["TEXCOORD7.w"]        = SemanticType.TEXCOORD7_W;
-        container["COLOR0.x"]           = SemanticType.COLOR0_X;
-        container["COLOR0.y"]           = SemanticType.COLOR0_Y;
-        container["COLOR0.z"]           = SemanticType.COLOR0_Z;
-        container["COLOR0.w"]           = SemanticType.COLOR0_W;
-        container["COLOR.x"]            = SemanticType.COLOR0_X;
-        container["COLOR.y"]            = SemanticType.COLOR0_Y;
-        container["COLOR.z"]            = SemanticType.COLOR0_Z;
-        container["COLOR.w"]            = SemanticType.COLOR0_W;
+        container["VTX"] = SemanticType.VTX;
+        container["IDX"] = SemanticType.IDX;
+
+        container["SV_POSITION.X"] = SemanticType.POSITION_X;
+        container["SV_POSITION.Y"] = SemanticType.POSITION_Y;
+        container["SV_POSITION.Z"] = SemanticType.POSITION_Z;
+        container["SV_POSITION.W"] = SemanticType.POSITION_W;
+        container["POSITION.X"] = SemanticType.POSITION_X;
+        container["POSITION.Y"] = SemanticType.POSITION_Y;
+        container["POSITION.Z"] = SemanticType.POSITION_Z;
+        container["POSITION.W"] = SemanticType.POSITION_W;
+        container["POSITION0.X"] = SemanticType.POSITION_X;
+        container["POSITION0.Y"] = SemanticType.POSITION_Y;
+        container["POSITION0.Z"] = SemanticType.POSITION_Z;
+        container["POSITION0.W"] = SemanticType.POSITION_W;
+        container["IN_POSITION0.X"] = SemanticType.POSITION_X;
+        container["IN_POSITION0.Y"] = SemanticType.POSITION_Y;
+        container["IN_POSITION0.Z"] = SemanticType.POSITION_Z;
+        container["IN_POSITION0.W"] = SemanticType.POSITION_W;
+
+        container["NORMAL.X"] = SemanticType.NORMAL_X;
+        container["NORMAL.Y"] = SemanticType.NORMAL_Y;
+        container["NORMAL.Z"] = SemanticType.NORMAL_Z;
+        container["NORMAL.W"] = SemanticType.NORMAL_W;
+        container["NORMAL0.X"] = SemanticType.NORMAL_X;
+        container["NORMAL0.Y"] = SemanticType.NORMAL_Y;
+        container["NORMAL0.Z"] = SemanticType.NORMAL_Z;
+        container["NORMAL0.W"] = SemanticType.NORMAL_W;
+        container["IN_NORMAL0.X"] = SemanticType.NORMAL_X;
+        container["IN_NORMAL0.Y"] = SemanticType.NORMAL_Y;
+        container["IN_NORMAL0.Z"] = SemanticType.NORMAL_Z;
+        container["IN_NORMAL0.W"] = SemanticType.NORMAL_W;
+
+        container["TANGENT.X"] = SemanticType.TANGENT_X;
+        container["TANGENT.Y"] = SemanticType.TANGENT_Y;
+        container["TANGENT.Z"] = SemanticType.TANGENT_Z;
+        container["TANGENT.W"] = SemanticType.TANGENT_W;
+        container["TANGENT0.X"] = SemanticType.TANGENT_X;
+        container["TANGENT0.Y"] = SemanticType.TANGENT_Y;
+        container["TANGENT0.Z"] = SemanticType.TANGENT_Z;
+        container["TANGENT0.W"] = SemanticType.TANGENT_W;
+        container["IN_TANGENT0.X"] = SemanticType.TANGENT_X;
+        container["IN_TANGENT0.Y"] = SemanticType.TANGENT_Y;
+        container["IN_TANGENT0.Z"] = SemanticType.TANGENT_Z;
+        container["IN_TANGENT0.W"] = SemanticType.TANGENT_W;
+
+        container["TEXCOORD.X"] = SemanticType.TEXCOORD0_X;
+        container["TEXCOORD.Y"] = SemanticType.TEXCOORD0_Y;
+        container["TEXCOORD.Z"] = SemanticType.TEXCOORD0_Z;
+        container["TEXCOORD.W"] = SemanticType.TEXCOORD0_W;
+        container["TEXCOORD0.X"] = SemanticType.TEXCOORD0_X;
+        container["TEXCOORD0.Y"] = SemanticType.TEXCOORD0_Y;
+        container["TEXCOORD0.Z"] = SemanticType.TEXCOORD0_Z;
+        container["TEXCOORD0.W"] = SemanticType.TEXCOORD0_W;
+        container["IN_TEXCOORD0.X"] = SemanticType.TEXCOORD0_X;
+        container["IN_TEXCOORD0.Y"] = SemanticType.TEXCOORD0_Y;
+        container["IN_TEXCOORD0.Z"] = SemanticType.TEXCOORD0_Z;
+        container["IN_TEXCOORD0.W"] = SemanticType.TEXCOORD0_W;
+
+        container["TEXCOORD1.X"] = SemanticType.TEXCOORD1_X;
+        container["TEXCOORD1.Y"] = SemanticType.TEXCOORD1_Y;
+        container["TEXCOORD1.Z"] = SemanticType.TEXCOORD1_Z;
+        container["TEXCOORD1.W"] = SemanticType.TEXCOORD1_W;
+        container["IN_TEXCOORD1.X"] = SemanticType.TEXCOORD1_X;
+        container["IN_TEXCOORD1.Y"] = SemanticType.TEXCOORD1_Y;
+        container["IN_TEXCOORD1.Z"] = SemanticType.TEXCOORD1_Z;
+        container["IN_TEXCOORD1.W"] = SemanticType.TEXCOORD1_W;
+
+        container["TEXCOORD2.X"] = SemanticType.TEXCOORD2_X;
+        container["TEXCOORD2.Y"] = SemanticType.TEXCOORD2_Y;
+        container["TEXCOORD2.Z"] = SemanticType.TEXCOORD2_Z;
+        container["TEXCOORD2.W"] = SemanticType.TEXCOORD2_W;
+        container["IN_TEXCOORD2.X"] = SemanticType.TEXCOORD2_X;
+        container["IN_TEXCOORD2.Y"] = SemanticType.TEXCOORD2_Y;
+        container["IN_TEXCOORD2.Z"] = SemanticType.TEXCOORD2_Z;
+        container["IN_TEXCOORD2.W"] = SemanticType.TEXCOORD2_W;
+
+        container["TEXCOORD3.X"] = SemanticType.TEXCOORD3_X;
+        container["TEXCOORD3.Y"] = SemanticType.TEXCOORD3_Y;
+        container["TEXCOORD3.Z"] = SemanticType.TEXCOORD3_Z;
+        container["TEXCOORD3.W"] = SemanticType.TEXCOORD3_W;
+        container["IN_TEXCOORD3.X"] = SemanticType.TEXCOORD3_X;
+        container["IN_TEXCOORD3.Y"] = SemanticType.TEXCOORD3_Y;
+        container["IN_TEXCOORD3.Z"] = SemanticType.TEXCOORD3_Z;
+        container["IN_TEXCOORD3.W"] = SemanticType.TEXCOORD3_W;
+
+        container["TEXCOORD4.X"] = SemanticType.TEXCOORD4_X;
+        container["TEXCOORD4.Y"] = SemanticType.TEXCOORD4_Y;
+        container["TEXCOORD4.Z"] = SemanticType.TEXCOORD4_Z;
+        container["TEXCOORD4.W"] = SemanticType.TEXCOORD4_W;
+        container["IN_TEXCOORD4.X"] = SemanticType.TEXCOORD4_X;
+        container["IN_TEXCOORD4.Y"] = SemanticType.TEXCOORD4_Y;
+        container["IN_TEXCOORD4.Z"] = SemanticType.TEXCOORD4_Z;
+        container["IN_TEXCOORD4.W"] = SemanticType.TEXCOORD4_W;
+
+        container["TEXCOORD5.X"] = SemanticType.TEXCOORD5_X;
+        container["TEXCOORD5.Y"] = SemanticType.TEXCOORD5_Y;
+        container["TEXCOORD5.Z"] = SemanticType.TEXCOORD5_Z;
+        container["TEXCOORD5.W"] = SemanticType.TEXCOORD5_W;
+        container["IN_TEXCOORD5.X"] = SemanticType.TEXCOORD5_X;
+        container["IN_TEXCOORD5.Y"] = SemanticType.TEXCOORD5_Y;
+        container["IN_TEXCOORD5.Z"] = SemanticType.TEXCOORD5_Z;
+        container["IN_TEXCOORD5.W"] = SemanticType.TEXCOORD5_W;
+
+        container["TEXCOORD6.X"] = SemanticType.TEXCOORD6_X;
+        container["TEXCOORD6.Y"] = SemanticType.TEXCOORD6_Y;
+        container["TEXCOORD6.Z"] = SemanticType.TEXCOORD6_Z;
+        container["TEXCOORD6.W"] = SemanticType.TEXCOORD6_W;
+        container["IN_TEXCOORD6.X"] = SemanticType.TEXCOORD6_X;
+        container["IN_TEXCOORD6.Y"] = SemanticType.TEXCOORD6_Y;
+        container["IN_TEXCOORD6.Z"] = SemanticType.TEXCOORD6_Z;
+        container["IN_TEXCOORD6.W"] = SemanticType.TEXCOORD6_W;
+
+        container["TEXCOORD7.X"] = SemanticType.TEXCOORD7_X;
+        container["TEXCOORD7.Y"] = SemanticType.TEXCOORD7_Y;
+        container["TEXCOORD7.Z"] = SemanticType.TEXCOORD7_Z;
+        container["TEXCOORD7.W"] = SemanticType.TEXCOORD7_W;
+        container["IN_TEXCOORD7.X"] = SemanticType.TEXCOORD7_X;
+        container["IN_TEXCOORD7.Y"] = SemanticType.TEXCOORD7_Y;
+        container["IN_TEXCOORD7.Z"] = SemanticType.TEXCOORD7_Z;
+        container["IN_TEXCOORD7.W"] = SemanticType.TEXCOORD7_W;
+
+        container["COLOR0.X"] = SemanticType.COLOR0_X;
+        container["COLOR0.Y"] = SemanticType.COLOR0_Y;
+        container["COLOR0.Z"] = SemanticType.COLOR0_Z;
+        container["COLOR0.W"] = SemanticType.COLOR0_W;
+        container["COLOR.X"] = SemanticType.COLOR0_X;
+        container["COLOR.Y"] = SemanticType.COLOR0_Y;
+        container["COLOR.Z"] = SemanticType.COLOR0_Z;
+        container["COLOR.W"] = SemanticType.COLOR0_W;
+        container["IN_COLOR0.X"] = SemanticType.COLOR0_X;
+        container["IN_COLOR0.Y"] = SemanticType.COLOR0_Y;
+        container["IN_COLOR0.Z"] = SemanticType.COLOR0_Z;
+        container["IN_COLOR0.W"] = SemanticType.COLOR0_W;
     }
 
-    // jave.lin : »ñÈ¡ parent transform ¶ÔÏó
+    // jave.lin : è·å– parent transform å¯¹è±¡
     private Transform GetParentTrans()
     {
         var parentGO = GameObject.Find(GO_Parent_Name);
@@ -921,7 +1123,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         return parentGO.transform;
     }
 
-    // jave.lin : ¸ù¾İÃû×ÖÉú³É GO Name
+    // jave.lin : æ ¹æ®åå­—ç”Ÿæˆ GO Name
     private string GenerateGOName(TextAsset ta)
     {
         //return $"From_CSV_{ta.text.GetHashCode()}";
@@ -929,14 +1131,14 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         return ta.name;
     }
 
-    // jave.lin : ¸ù¾İ CSV ÄÚÈİÉú³É MeshRenderer ¶ÔÓ¦µÄ GO
+    // jave.lin : æ ¹æ® CSV å†…å®¹ç”Ÿæˆ MeshRenderer å¯¹åº”çš„ GO
     private GameObject GenerateGOWithMeshRendererFromCSV(string csv, bool is_from_DX_CSV)
     {
         var ret = new GameObject();
 
         var mesh = new Mesh();
 
-        // jave.lin : ¸ù¾İ csv À´Ìî³ä mesh ĞÅÏ¢
+        // jave.lin : æ ¹æ® csv æ¥å¡«å…… mesh ä¿¡æ¯
         FillMeshFromCSV(mesh, csv, is_from_DX_CSV);
 
         var meshFilter = ret.AddComponent<MeshFilter>();
@@ -944,7 +1146,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
         var meshRenderer = ret.AddComponent<MeshRenderer>();
 
-        // jave.lin : Ä¬ÈÏÊ¹ÓÃ URP µÄ PBR Shader
+        // jave.lin : é»˜è®¤ä½¿ç”¨ URP çš„ PBR Shader
         meshRenderer.sharedMaterial = material;
 
         ret.transform.position = Vector3.zero;
@@ -954,7 +1156,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         return ret;
     }
 
-    // jave.lin : ¸ù¾İ semantic type ºÍ data À´Ìî³äµ½ Êı¾İ×Ö¶Î
+    // jave.lin : æ ¹æ® semantic type å’Œ data æ¥å¡«å……åˆ° æ•°æ®å­—æ®µ
     private void FillVertexFieldInfo(VertexInfo info, SemanticType semanticType, string data, bool is_from_DX_CSV)
     {
         switch (semanticType)
@@ -1155,7 +1357,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
     }
 
-    // jave.lin : ¸ù¾İ csv À´Ìî³ä mesh ĞÅÏ¢
+    // jave.lin : æ ¹æ® csv æ¥å¡«å…… mesh ä¿¡æ¯
     private void FillMeshFromCSV(Mesh mesh, string csv, bool is_from_DX_CSV)
     {
         var line_splitor = new string[] { "\n" };
@@ -1165,7 +1367,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
         // jave.lin : lines[0] == "VTX, IDX, POSITION.x, POSITION.y, POSITION.z, NORMAL.x, NORMAL.y, NORMAL.z, NORMAL.w, TANGENT.x, TANGENT.y, TANGENT.z, TANGENT.w, TEXCOORD0.x, TEXCOORD0.y"
 
-        // jave.lin : ¹¹½¨ vertex buffer format µÄ semantics ºÍ idx µÄ¶ÔÓ¦¹ØÏµ
+        // jave.lin : æ„å»º vertex buffer format çš„ semantics å’Œ idx çš„å¯¹åº”å…³ç³»
         var semanticTitles = lines[0].Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
 
         Dictionary<string, SemanticType> semantic_type_map_key_name;
@@ -1182,8 +1384,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         Debug.Log($"semanticTitles : {lines[0]}");
         for (int i = 0; i < semanticTitles.Length; i++)
         {
-            var title = semanticTitles[i];
-            var semantics = title.Trim();
+            var semantics = semanticTitles[i].Trim().ToUpper();
             if (semantic_type_map_key_name.TryGetValue(semantics, out SemanticType semanticType))
             {
                 semanticsIDX_helper[i] = semanticType;
@@ -1195,8 +1396,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             }
         }
 
-        // jave.lin : ÏÈ¸ù¾İ IDX À´ÅÅĞò»¹Ô­ vertex buffer µÄÄÚÈİ
-        // lines[1~count-1] : ±ÈÈç£º 0, 0,  0.0402, -1.57095E-17,  0.12606, -0.97949,  0.00, -0.20056,  0.00,  0.1098,  0.83691, -0.53613,  1.00, -0.06058,  0.81738
+        // jave.lin : å…ˆæ ¹æ® IDX æ¥æ’åºè¿˜åŸ vertex buffer çš„å†…å®¹
+        // lines[1~count-1] : æ¯”å¦‚ï¼š 0, 0,  0.0402, -1.57095E-17,  0.12606, -0.97949,  0.00, -0.20056,  0.00,  0.1098,  0.83691, -0.53613,  1.00, -0.06058,  0.81738
 
         Dictionary<int, VertexInfo> vertex_dict_key_idx = new Dictionary<int, VertexInfo>();
 
@@ -1208,7 +1409,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             var line = lines[i];
             var linesElements = line.Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
 
-            // jave.lin : µÚ¼¸¸ö¶¥µãË÷Òı£¨0~count-1)
+            // jave.lin : ç¬¬å‡ ä¸ªé¡¶ç‚¹ç´¢å¼•ï¼ˆ0~count-1)
             var idx = int.Parse(linesElements[1]);
             if (min_idx > idx)
             {
@@ -1221,13 +1422,13 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             var line = lines[i];
             var linesElements = line.Split(line_element_splitor, StringSplitOptions.RemoveEmptyEntries);
 
-            // jave.lin : µÚ¼¸¸ö¶¥µãË÷Òı£¨0~count-1)
+            // jave.lin : ç¬¬å‡ ä¸ªé¡¶ç‚¹ç´¢å¼•ï¼ˆ0~count-1)
             var idx = int.Parse(linesElements[1]) - min_idx;
 
-            // jave.lin : indices »º´æË÷ÒıÊı¾İµÄÌí¼Ó
+            // jave.lin : indices ç¼“å­˜ç´¢å¼•æ•°æ®çš„æ·»åŠ 
             indices.Add(idx);
 
-            // jave.lin : Èç¹û¸Ã vertex Ã»ÓĞ´¦Àí¹ı£¬ÄÇÃ´²ÅÈ¥´¦Àí
+            // jave.lin : å¦‚æœè¯¥ vertex æ²¡æœ‰å¤„ç†è¿‡ï¼Œé‚£ä¹ˆæ‰å»å¤„ç†
             if (!vertex_dict_key_idx.TryGetValue(idx, out VertexInfo info))
             {
                 info = new VertexInfo();
@@ -1242,64 +1443,64 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             }
         }
 
-        // jave.lin : Ëõ·Å¡¢Ğı×ª¡¢Æ½ÒÆ
-        var rotation    = Quaternion.Euler(vertexRotation);
-        var TRS_mat     = Matrix4x4.TRS(vertexOffset, rotation, vertexScale);
-        // jave.lin : ·¨Ïß±ä»»¾ØÕóĞèÒªÌØÊâ´¦Àí£¬Õë¶Ô vertex scale Îª·Ç uniform scale µÄÇé¿ö
-        // ref : LearnGL - 11.5 - ¾ØÕó04 - ·¨Ïß´Ó¶ÔÏó¿Õ¼ä±ä»»µ½ÊÀ½ç¿Õ¼ä
+        // jave.lin : ç¼©æ”¾ã€æ—‹è½¬ã€å¹³ç§»
+        var rotation = Quaternion.Euler(vertexRotation);
+        var TRS_mat = Matrix4x4.TRS(vertexOffset, rotation, vertexScale);
+        // jave.lin : æ³•çº¿å˜æ¢çŸ©é˜µéœ€è¦ç‰¹æ®Šå¤„ç†ï¼Œé’ˆå¯¹ vertex scale ä¸ºé uniform scale çš„æƒ…å†µ
+        // ref : LearnGL - 11.5 - çŸ©é˜µ04 - æ³•çº¿ä»å¯¹è±¡ç©ºé—´å˜æ¢åˆ°ä¸–ç•Œç©ºé—´
         // https://blog.csdn.net/linjf520/article/details/107501215
-        var M_IT_mat    = Matrix4x4.TRS(Vector3.zero, rotation, vertexScale).inverse.transpose;
+        var M_IT_mat = Matrix4x4.TRS(Vector3.zero, rotation, vertexScale).inverse.transpose;
 
-        // jave.lin : composite the data £¨×îºó¾ÍÊÇÎÒÃÇÒª×éºÏÊı¾İ£¬Í³Ò»¸³Öµ¸ø mesh£©
-        var vertices    = new Vector3[vertex_dict_key_idx.Count];
-        var normals     = new Vector3[vertex_dict_key_idx.Count];
-        var tangents    = new Vector4[vertex_dict_key_idx.Count];
-        var uv          = new Vector2[vertex_dict_key_idx.Count];
-        var uv2         = new Vector2[vertex_dict_key_idx.Count];
-        var uv3         = new Vector2[vertex_dict_key_idx.Count];
-        var uv4         = new Vector2[vertex_dict_key_idx.Count];
-        var uv5         = new Vector2[vertex_dict_key_idx.Count];
-        var uv6         = new Vector2[vertex_dict_key_idx.Count];
-        var uv7         = new Vector2[vertex_dict_key_idx.Count];
-        var uv8         = new Vector2[vertex_dict_key_idx.Count];
-        var color0      = new Color[vertex_dict_key_idx.Count];
+        // jave.lin : composite the data ï¼ˆæœ€åå°±æ˜¯æˆ‘ä»¬è¦ç»„åˆæ•°æ®ï¼Œç»Ÿä¸€èµ‹å€¼ç»™ meshï¼‰
+        var vertices = new Vector3[vertex_dict_key_idx.Count];
+        var normals = new Vector3[vertex_dict_key_idx.Count];
+        var tangents = new Vector4[vertex_dict_key_idx.Count];
+        var uv = new Vector2[vertex_dict_key_idx.Count];
+        var uv2 = new Vector2[vertex_dict_key_idx.Count];
+        var uv3 = new Vector2[vertex_dict_key_idx.Count];
+        var uv4 = new Vector2[vertex_dict_key_idx.Count];
+        var uv5 = new Vector2[vertex_dict_key_idx.Count];
+        var uv6 = new Vector2[vertex_dict_key_idx.Count];
+        var uv7 = new Vector2[vertex_dict_key_idx.Count];
+        var uv8 = new Vector2[vertex_dict_key_idx.Count];
+        var color0 = new Color[vertex_dict_key_idx.Count];
 
-        // jave.lin : ¸ù¾İ 0~count µÄË÷ÒıË³ĞòÀ´×éÖ¯Ïà¹ØµÄ vertex Êı¾İ
+        // jave.lin : æ ¹æ® 0~count çš„ç´¢å¼•é¡ºåºæ¥ç»„ç»‡ç›¸å…³çš„ vertex æ•°æ®
         for (int idx = 0; idx < vertices.Length; idx++)
         {
-            var info        = vertex_dict_key_idx[idx];
-            vertices[idx]   = TRS_mat * info.POSITION_H;
-            normals[idx]    = M_IT_mat * info.NORMAL;
-            tangents[idx]   = info.TANGENT;
-            uv[idx]         = info.TEXCOORD0;
-            uv2[idx]        = info.TEXCOORD1;
-            uv3[idx]        = info.TEXCOORD2;
-            uv4[idx]        = info.TEXCOORD3;
-            uv5[idx]        = info.TEXCOORD4;
-            uv6[idx]        = info.TEXCOORD5;
-            uv7[idx]        = info.TEXCOORD6;
-            uv8[idx]        = info.TEXCOORD7;
-            color0[idx]     = info.COLOR0;
+            var info = vertex_dict_key_idx[idx];
+            vertices[idx] = TRS_mat * info.POSITION_H;
+            normals[idx] = M_IT_mat * info.NORMAL;
+            tangents[idx] = info.TANGENT;
+            uv[idx] = info.TEXCOORD0;
+            uv2[idx] = info.TEXCOORD1;
+            uv3[idx] = info.TEXCOORD2;
+            uv4[idx] = info.TEXCOORD3;
+            uv5[idx] = info.TEXCOORD4;
+            uv6[idx] = info.TEXCOORD5;
+            uv7[idx] = info.TEXCOORD6;
+            uv8[idx] = info.TEXCOORD7;
+            color0[idx] = info.COLOR0;
         }
 
-        // jave.lin : ÉèÖÃ mesh ĞÅÏ¢
-        mesh.vertices   = vertices;
+        // jave.lin : è®¾ç½® mesh ä¿¡æ¯
+        mesh.vertices = vertices;
 
-        // jave.lin : ÊÇ·ñ reverse idx
+        // jave.lin : æ˜¯å¦ reverse idx
         if (is_reverse_vertex_order) indices.Reverse();
         mesh.triangles = indices.ToArray();
 
-        // jave.lin : unity ²»ÄÜ³¬¹ı uv[0~7]
-        mesh.uv         = include_uv0 ? uv : null;
-        mesh.uv2        = include_uv1 ? uv2 : null;
-        mesh.uv3        = include_uv2 ? uv3 : null;
-        mesh.uv4        = include_uv3 ? uv4 : null;
-        mesh.uv5        = include_uv4 ? uv5 : null;
-        mesh.uv6        = include_uv5 ? uv6 : null;
-        mesh.uv7        = include_uv6 ? uv7 : null;
-        mesh.uv8        = include_uv7 ? uv8 : null;
-        
-        mesh.colors     = include_color0 ? color0 : null;
+        // jave.lin : unity ä¸èƒ½è¶…è¿‡ uv[0~7]
+        mesh.uv = include_uv0 ? uv : null;
+        mesh.uv2 = include_uv1 ? uv2 : null;
+        mesh.uv3 = include_uv2 ? uv3 : null;
+        mesh.uv4 = include_uv3 ? uv4 : null;
+        mesh.uv5 = include_uv4 ? uv5 : null;
+        mesh.uv6 = include_uv5 ? uv6 : null;
+        mesh.uv7 = include_uv6 ? uv7 : null;
+        mesh.uv8 = include_uv7 ? uv8 : null;
+
+        mesh.colors = include_color0 ? color0 : null;
 
         // jave.lin : AABB
         if (is_recalculate_bound)
@@ -1307,41 +1508,47 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             mesh.RecalculateBounds();
         }
 
-        // jave.lin : NORMAL
-        switch (normalImportType)
+        if (include_normal)
         {
-            case ModelImporterNormals.None:
-                // nop
-                break;
-            case ModelImporterNormals.Import:
-                mesh.normals = normals;
-                break;
-            case ModelImporterNormals.Calculate:
-                mesh.RecalculateNormals();
-                break;
-            default:
-                break;
+            // jave.lin : NORMAL
+            switch (normalImportType)
+            {
+                case ModelImporterNormals.None:
+                    // nop
+                    break;
+                case ModelImporterNormals.Import:
+                    mesh.normals = normals;
+                    break;
+                case ModelImporterNormals.Calculate:
+                    mesh.RecalculateNormals();
+                    break;
+                default:
+                    break;
+            }
         }
 
-        // jave.lin : TANGENT
-        switch (tangentImportType)
+        if (include_tangent)
         {
-            case ModelImporterTangents.None:
-                // nop
-                break;
-            case ModelImporterTangents.Import:
-                mesh.tangents = tangents;
-                break;
-            case ModelImporterTangents.CalculateLegacy:
-            case ModelImporterTangents.CalculateLegacyWithSplitTangents:
-            case ModelImporterTangents.CalculateMikk:
-                mesh.RecalculateTangents();
-                break;
-            default:
-                break;
+            // jave.lin : TANGENT
+            switch (tangentImportType)
+            {
+                case ModelImporterTangents.None:
+                    // nop
+                    break;
+                case ModelImporterTangents.Import:
+                    mesh.tangents = tangents;
+                    break;
+                case ModelImporterTangents.CalculateLegacy:
+                case ModelImporterTangents.CalculateLegacyWithSplitTangents:
+                case ModelImporterTangents.CalculateMikk:
+                    mesh.RecalculateTangents();
+                    break;
+                default:
+                    break;
+            }
         }
 
-        //// jave.lin : ´òÓ¡Ò»ÏÂ
+        //// jave.lin : æ‰“å°ä¸€ä¸‹
         //Debug.Log("FillMeshFromCSV done!");
     }
 }
