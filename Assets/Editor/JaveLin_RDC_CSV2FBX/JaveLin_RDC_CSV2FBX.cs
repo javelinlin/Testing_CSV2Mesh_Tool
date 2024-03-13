@@ -9,6 +9,7 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.Formats.Fbx.Exporter;
 using UnityEngine;
+using static JaveLin_RDC_CSV2FBX;
 
 public class JaveLin_RDC_CSV2FBX : EditorWindow
 {
@@ -110,6 +111,17 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         CreateNew,
         UsingExsitMaterialAsset,
     }
+
+    // jave.lin : 导出文件类型
+    public enum ExportFileType
+    {
+        FBX,            // 注意如果使用这种方式的话，会有 uv 不能保存超过 vector2 分量的数据，也就是说，uv无法保存 vector3 或 vector4 的数据
+        UnityMesh,      // 如果抓帧的模型发现 shaderlab 里面有使用到 vertex input TEXCOORD[n] 是超过2个以上的分量的，就不能使用 FBX 了，使用 UnityMesh 保存的网格可以保存下这些 uv 数据
+    }
+
+    private bool model_readable = false;
+
+    private ExportFileType exportFileType;
 
     // jave.lin : application to vertex shader 的通用类型（辅助转换用）
     public class VertexInfo
@@ -337,9 +349,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
 
     // jave.lin : on_gui 上显示的对象
     private TextAsset RDC_Text_Asset;
-    private string fbxName;
+    private string modelName;
     private string outputDir;
-    private string outputFullName;
+    private string outputModelPrefabFullName;
+    private string outputUnityMeshFullName;
 
     // jave.lin : on_gui - options
     private Vector2 optionsScrollPos;
@@ -501,10 +514,10 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
 
         // jave.lin : FBX 模型名字
-        fbxName = EditorGUILayout.TextField("FBX Name", fbxName);
-        if (RDC_Text_Asset != null && (refresh_csv || string.IsNullOrEmpty(fbxName)))
+        modelName = EditorGUILayout.TextField("FBX Name", modelName);
+        if (RDC_Text_Asset != null && (refresh_csv || string.IsNullOrEmpty(modelName)))
         {
-            fbxName = GenerateGOName(RDC_Text_Asset);
+            modelName = GenerateGOName(RDC_Text_Asset);
         }
 
         // jave.lin : output path
@@ -513,7 +526,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         if (refresh_csv || string.IsNullOrEmpty(outputDir))
         {
             // jave.lin : 拼接生成路径
-            outputDir = Path.Combine(Application.dataPath, $"Models_From_CSV/{fbxName}");
+            outputDir = Path.Combine(Application.dataPath, $"Models_From_CSV/{modelName}");
             outputDir = outputDir.Replace("\\", "/");
         }
         if (GUILayout.Button("Browser...", GUILayout.Width(100)))
@@ -533,15 +546,55 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         EditorGUILayout.EndHorizontal();
         // jave.lin : 显示导出的 full name
         GUI.enabled = false;
-        outputFullName = Path.Combine(outputDir, fbxName + ".fbx");
-        outputFullName = outputFullName.Replace("\\", "/");
-        EditorGUILayout.TextField("Output Full Name", outputFullName);
+        if (exportFileType == ExportFileType.FBX)
+        {
+            outputModelPrefabFullName = Path.Combine(outputDir, modelName + ".fbx");
+            outputModelPrefabFullName = outputModelPrefabFullName.Replace("\\", "/");
+            EditorGUILayout.TextField("Output Full Name", outputModelPrefabFullName);
+        }
+        else
+        {
+            outputUnityMeshFullName = Path.Combine(outputDir, modelName + "_mesh.asset");
+            outputUnityMeshFullName = outputUnityMeshFullName.Replace("\\", "/");
+            outputModelPrefabFullName = Path.Combine(outputDir, modelName + ".prefab");
+            outputModelPrefabFullName = outputModelPrefabFullName.Replace("\\", "/");
+            EditorGUILayout.TextField("Output Unity Mesh Full Name", outputUnityMeshFullName);
+            EditorGUILayout.TextField("Output Model Prefab Full Name", outputModelPrefabFullName);
+        }
         GUI.enabled = true;
 
-        // jave.lin : 导出 CSV 对应的 FBX
-        if (GUILayout.Button("Export FBX"))
+        // 显示注意选项
         {
-            ExportHandle();
+            var src_color = GUI.contentColor;
+            GUI.contentColor = Color.red;
+            GUILayout.Label("！！！注意注意！！！如果vertex input 里面的 TEXCOORD[n] 有使用到超过2个分量的数据类型，那么需要使用 UnityMesh 的导出类型，否则FBX中无法存储");
+
+            GUI.contentColor = Color.green;
+            if (GUILayout.Button("点击我，了解苦逼测试历程"))
+            {
+                Application.OpenURL("https://blog.csdn.net/linjf520/article/details/133993603");
+            }
+
+            GUI.contentColor = Color.yellow;
+            exportFileType = (ExportFileType)EditorGUILayout.EnumPopup("导出文件类型", exportFileType);
+            GUI.contentColor = src_color;
+        }
+
+        if (exportFileType == ExportFileType.FBX)
+        {
+            // jave.lin : 导出 CSV 对应的 FBX
+            if (GUILayout.Button("Export FBX"))
+            {
+                ExportFBXHandle();
+            }
+        }
+        else
+        {
+            // jave.lin : 导出 CSV 对应的 UnityMesh
+            if (GUILayout.Button("Export UnityMesh"))
+            {
+                ExportUnityMeshHandle();
+            }
         }
 
         // jave.lin : 显示 scroll view
@@ -553,6 +606,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         if (options_show)
         {
             EditorGUI.indentLevel++;
+            model_readable = EditorGUILayout.Toggle("Model Readable", model_readable);
             // jave.lin : 是否从 dx 的 Graphics API 导出而来的 CSV
             is_from_DX_CSV = EditorGUILayout.Toggle("Is From DirectX CSV", is_from_DX_CSV);
             // jave.lin : 是否反转法线 : 通过反转 indices 的顺序即可达到效果
@@ -585,15 +639,23 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             include_uv7 = EditorGUILayout.Toggle("Includes UV7", include_uv7);
             // jave.lin : include_color0
             include_color0 = EditorGUILayout.Toggle("Includes Color0", include_color0);
-            // jave.lin : 法线导入方式
-            if (include_normal)
+
+            if (exportFileType == ExportFileType.FBX)
             {
+                // jave.lin : 法线导入方式
                 normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
-            }
-            // jave.lin : 切线导入方式
-            if (include_tangent)
-            {
+                // jave.lin : 切线导入方式
                 tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
+                // jave.lin : 法线导入方式
+                if (include_normal)
+                {
+                    normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
+                }
+                // jave.lin : 切线导入方式
+                if (include_tangent)
+                {
+                    tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
+                }
             }
             // jave.lin : semantic 映射类型
             semanticMappingType = (SemanticMappingType)EditorGUILayout.EnumPopup("Semantic Mapping Type", semanticMappingType);
@@ -704,7 +766,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 else
                 {
                     // jave.lin : 默认使用 导出目录下的 mat 材质
-                    var mat_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
+                    var mat_path = Path.Combine(outputDir, modelName + ".mat").Replace("\\", "/");
                     mat_path = GetAssetPathByFullName(mat_path);
                     var mat_asset = AssetDatabase.LoadAssetAtPath<Material>(mat_path);
                     if (mat_asset != null) material = mat_asset;
@@ -853,8 +915,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         }
     }
 
-    // jave.lin : 导出处理
-    private void ExportHandle()
+    // jave.lin : 导出FBX处理
+    private void ExportFBXHandle()
     {
         if (RDC_Text_Asset != null)
         {
@@ -865,14 +927,14 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 // jave.lin : 清理之前的 GO
                 var parent = GetParentTrans();
                 // jave.lin : 将 CSV 的内容转为 MeshRenderer 的 GO
-                var outputGO = GameObject.Find($"{GO_Parent_Name }/{fbxName}");
+                var outputGO = GameObject.Find($"{GO_Parent_Name }/{modelName}");
                 if (outputGO != null)
                 {
                     GameObject.DestroyImmediate(outputGO);
                 }
                 outputGO = GenerateGOWithMeshRendererFromCSV(RDC_Text_Asset.text, is_from_DX_CSV);
                 outputGO.transform.SetParent(parent);
-                outputGO.name = fbxName;
+                outputGO.name = modelName;
 
                 //// jave.lin : 先清理目录下的内容
                 //DelectDir(outputDir);
@@ -889,7 +951,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                     // jave.lin : 创建前，先设置主纹理
                     create_mat.mainTexture = texture;
 
-                    var mat_created_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
+                    var mat_created_path = Path.Combine(outputDir, modelName + ".mat").Replace("\\", "/");
                     mat_created_path = GetAssetPathByFullName(mat_created_path);
                     Debug.Log($"mat_created_path : {mat_created_path}");
                     // jave.lin : 先删除原来的
@@ -906,12 +968,12 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 }
 
                 // jave.lin : 使用 FBX Exporter 插件导出 FBX
-                ModelExporter.ExportObject(outputFullName, outputGO);
+                ModelExporter.ExportObject(outputModelPrefabFullName, outputGO);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
 
                 // jave.lin : 重新设置 MI，并且重新导入
-                string mi_path = GetAssetPathByFullName(outputFullName);
+                string mi_path = GetAssetPathByFullName(outputModelPrefabFullName);
                 ModelImporter mi = ModelImporter.GetAtPath(mi_path) as ModelImporter;
                 mi.importNormals = normalImportType;
                 mi.importTangents = tangentImportType;
@@ -925,6 +987,7 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 mi.importVisibility = false;
                 mi.animationType = ModelImporterAnimationType.None;
                 mi.materialImportMode = ModelImporterMaterialImportMode.None;
+                mi.isReadable = model_readable;
                 mi.SaveAndReimport();
 
                 // jave.lin : replace outputGO from model prefab
@@ -940,20 +1003,154 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 outputGO.transform.localPosition = src_local_pos;
                 outputGO.transform.localRotation = src_local_rot;
                 outputGO.transform.localScale = src_local_scl;
-                outputGO.name = fbxName;
+                outputGO.name = modelName;
                 // jave.lin : set material
-                var mat_path = Path.Combine(outputDir, fbxName + ".mat").Replace("\\", "/");
+                var mat_path = Path.Combine(outputDir, modelName + ".mat").Replace("\\", "/");
                 mat_path = GetAssetPathByFullName(mat_path);
                 var mat = AssetDatabase.LoadAssetAtPath<Material>(mat_path);
                 outputGO.GetComponent<MeshRenderer>().sharedMaterial = mat;
                 // jave.lin : new real prefab
-                var prefab_created_path = Path.Combine(outputDir, fbxName + ".prefab").Replace("\\", "/");
+                var prefab_created_path = Path.Combine(outputDir, modelName + ".prefab").Replace("\\", "/");
                 prefab_created_path = GetAssetPathByFullName(prefab_created_path);
                 Debug.Log($"prefab_created_path : {prefab_created_path}");
                 PrefabUtility.SaveAsPrefabAssetAndConnect(outputGO, prefab_created_path, InteractionMode.AutomatedAction);
 
                 // jave.lin : 打印打出成功的信息
-                Debug.Log($"Export FBX Successfully! outputPath : {outputFullName}");
+                Debug.Log($"Export FBX Successfully! outputPath : {outputModelPrefabFullName}");
+            }
+            catch (Exception er)
+            {
+                Debug.LogError($"Export FBX Failed! er: {er}");
+            }
+        }
+    }
+
+    // jave.lin : 导出UnityMesh处理
+    private void ExportUnityMeshHandle()
+    {
+        if (RDC_Text_Asset != null)
+        {
+            try
+            {
+                // jave.lin : 先映射好 semantics 名字和类型
+                MappingSemanticsTypeByNames(ref semanticTypeDict_key_name_helper);
+                // jave.lin : 清理之前的 GO
+                var parent = GetParentTrans();
+                // jave.lin : 将 CSV 的内容转为 MeshRenderer 的 GO
+                var outputGO = GameObject.Find($"{GO_Parent_Name}/{modelName}");
+                if (outputGO != null)
+                {
+                    GameObject.DestroyImmediate(outputGO);
+                }
+                else
+                {
+                    outputGO = new GameObject(modelName);
+                }
+
+                var mesh = GenerateMeshFromCSV(RDC_Text_Asset.text, is_from_DX_CSV);
+
+                var meshFilter = outputGO.AddComponent<MeshFilter>();
+                meshFilter.sharedMesh = mesh;
+
+                var meshRenderer = outputGO.AddComponent<MeshRenderer>();
+
+                // jave.lin : 默认使用 URP 的 PBR Shader
+                meshRenderer.sharedMaterial = material;
+
+                outputGO.transform.localPosition = Vector3.zero;
+                outputGO.transform.localRotation = Quaternion.identity;
+                outputGO.transform.localScale = Vector3.one;
+
+                outputGO.transform.SetParent(parent);
+                outputGO.name = modelName;
+
+                //// jave.lin : 先清理目录下的内容
+                //DelectDir(outputDir);
+                // jave.lin : 然后重新创建新的目录
+                if (!Directory.Exists(outputDir))
+                {
+                    Directory.CreateDirectory(outputDir);
+                }
+
+                if (materialSetType == MaterialSetType.CreateNew)
+                {
+                    // jave.lin : 自动创建材质
+                    var create_mat = outputGO.GetComponent<MeshRenderer>().sharedMaterial;
+                    // jave.lin : 创建前，先设置主纹理
+                    create_mat.mainTexture = texture;
+
+                    var mat_created_path = Path.Combine(outputDir, modelName + ".mat").Replace("\\", "/");
+                    mat_created_path = GetAssetPathByFullName(mat_created_path);
+                    Debug.Log($"mat_created_path : {mat_created_path}");
+                    // jave.lin : 先删除原来的
+                    var src_mat = AssetDatabase.LoadAssetAtPath<Material>(mat_created_path);
+                    if (src_mat == create_mat)
+                    {
+                        // nop
+                    }
+                    else
+                    {
+                        AssetDatabase.DeleteAsset(mat_created_path);
+                        AssetDatabase.CreateAsset(create_mat, mat_created_path);
+                    }
+                }
+
+                // jave.lin : 导出 unity mesh 保留 uv 超过 2 个分量以上的数据
+                MeshUtility.Optimize(mesh);
+                var so = new SerializedObject(mesh);
+                var sp = so.FindProperty("m_IsReadable");
+                sp.boolValue = model_readable;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                var outputMeshPath = GetAssetPathByFullName(outputUnityMeshFullName);
+                AssetDatabase.CreateAsset(mesh, outputMeshPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                // jave.lin : 重新设置 mesh
+                mesh = AssetDatabase.LoadAssetAtPath<Mesh>(outputMeshPath);
+                outputGO.GetComponent<MeshFilter>().sharedMesh = mesh;
+
+                // jave.lin : 导出 prefab
+                //AssetDatabase.CreateAsset(outputGO, outputModelPrefabFullName);
+                var outputPrefabPath = GetAssetPathByFullName(outputModelPrefabFullName);
+                PrefabUtility.SaveAsPrefabAssetAndConnect(outputGO, outputPrefabPath, InteractionMode.AutomatedAction);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                // jave.lin : replace outputGO from model prefab
+                var src_parent = outputGO.transform.parent;
+                var src_local_pos = outputGO.transform.localPosition;
+                var src_local_rot = outputGO.transform.localRotation;
+                var src_local_scl = outputGO.transform.localScale;
+                //DestroyImmediate(outputGO);
+                // jave.lin : new model prefab
+                //var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(outputModelPrefabFullName);
+                //outputGO = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+                outputGO.transform.SetParent(src_parent);
+                outputGO.transform.localPosition = src_local_pos;
+                outputGO.transform.localRotation = src_local_rot;
+                outputGO.transform.localScale = src_local_scl;
+                outputGO.name = modelName;
+                // jave.lin : set material
+                if (materialSetType == MaterialSetType.CreateNew)
+                {
+                    var mat_path = Path.Combine(outputDir, modelName + ".mat").Replace("\\", "/");
+                    mat_path = GetAssetPathByFullName(mat_path);
+                    var mat = AssetDatabase.LoadAssetAtPath<Material>(mat_path);
+                    outputGO.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                }
+                else
+                {
+                    outputGO.GetComponent<MeshRenderer>().sharedMaterial = material;
+                }
+                // jave.lin : new real regular prefab
+                var prefab_created_path = Path.Combine(outputDir, modelName + ".prefab").Replace("\\", "/");
+                prefab_created_path = GetAssetPathByFullName(prefab_created_path);
+                Debug.Log($"prefab_created_path : {prefab_created_path}");
+                PrefabUtility.SaveAsPrefabAssetAndConnect(outputGO, prefab_created_path, InteractionMode.AutomatedAction);
+
+                // jave.lin : 打印打出成功的信息
+                Debug.Log($"Export Prefab & UnityMesh Successfully! outputPath : {outputModelPrefabFullName}");
             }
             catch (Exception er)
             {
@@ -1154,6 +1351,17 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
         ret.transform.localScale = Vector3.one;
 
         return ret;
+    }
+
+    // jave.lin : 根据 CSV 内容生成 Mesh
+    private Mesh GenerateMeshFromCSV(string csv, bool is_from_DX_CSV)
+    {
+        var mesh = new Mesh();
+
+        // jave.lin : 根据 csv 来填充 mesh 信息
+        FillMeshFromCSV(mesh, csv, is_from_DX_CSV);
+
+        return mesh;
     }
 
     // jave.lin : 根据 semantic type 和 data 来填充到 数据字段
