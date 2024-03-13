@@ -640,22 +640,15 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
             // jave.lin : include_color0
             include_color0 = EditorGUILayout.Toggle("Includes Color0", include_color0);
 
-            if (exportFileType == ExportFileType.FBX)
+            // jave.lin : 法线导入方式
+            if (include_normal)
             {
-                // jave.lin : 法线导入方式
                 normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
-                // jave.lin : 切线导入方式
+            }
+            // jave.lin : 切线导入方式
+            if (include_tangent)
+            {
                 tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
-                // jave.lin : 法线导入方式
-                if (include_normal)
-                {
-                    normalImportType = (ModelImporterNormals)EditorGUILayout.EnumPopup("Normal Import Type", normalImportType);
-                }
-                // jave.lin : 切线导入方式
-                if (include_tangent)
-                {
-                    tangentImportType = (ModelImporterTangents)EditorGUILayout.EnumPopup("Tangent Import Type", tangentImportType);
-                }
             }
             // jave.lin : semantic 映射类型
             semanticMappingType = (SemanticMappingType)EditorGUILayout.EnumPopup("Semantic Mapping Type", semanticMappingType);
@@ -1042,11 +1035,8 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 {
                     GameObject.DestroyImmediate(outputGO);
                 }
-                else
-                {
-                    outputGO = new GameObject(modelName);
-                }
 
+                outputGO = new GameObject(modelName);
                 var mesh = GenerateMeshFromCSV(RDC_Text_Asset.text, is_from_DX_CSV);
 
                 var meshFilter = outputGO.AddComponent<MeshFilter>();
@@ -1105,6 +1095,11 @@ public class JaveLin_RDC_CSV2FBX : EditorWindow
                 AssetDatabase.CreateAsset(mesh, outputMeshPath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
+                // jave.lin : 如果 readable == false，那么 将 主存那份内存删除
+                if (!model_readable)
+                {
+                    mesh.UploadMeshData(true);
+                }
 
                 // jave.lin : 重新设置 mesh
                 mesh = AssetDatabase.LoadAssetAtPath<Mesh>(outputMeshPath);
